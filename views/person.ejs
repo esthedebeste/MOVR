@@ -6,11 +6,13 @@
     <title>MOVR.</title>
 </head>
 
-<body id="personbody">
-
-    <div id="accountparent">
-        <div id="accounts"></div>
+<body>
+    <div id="personbody">
+        <div id="accountparent">
+            <div id="accounts"></div>
+        </div>
     </div>
+    <script src="/progbg.js"></script>
     <script>
         const from = `<%=from%>`;
         const name = `<%=name%>`;
@@ -32,13 +34,15 @@
                     });
                 switch (accounttype) {
                     case "GITHUB_ID":
-                        fetch("https://api.github.com/user/" + accountid).then(a => a.json()).then(resolve)
+                        fetch("https://api.github.com/user/" + accountid).then(a => a.json())
+                            .then(resolve)
                             .catch(reject);
                         break;
                     case "DISCORD_ID":
-                        fetch("/getdiscordname/" + accountid).then(a => a.text()).then(username => resolve({
-                                name: username
-                            }))
+                        fetch("/getdiscordname/" + accountid).then(a => a.text()).then(
+                                username => resolve({
+                                    name: username
+                                }))
                             .catch(reject);
                         break;
                     default:
@@ -104,10 +108,11 @@
             case "gh":
                 fetch("https://api.github.com/users/" + name).then(a => a.json()).then(userdata => {
                     console.log(userdata);
-                    fetch("/api/getaccount/gh/" + userdata.id).then(a => a.json()).then(accountid => {
-                        console.log(accountid);
-                        setFromId(accountid);
-                    });
+                    fetch("/api/getaccount/gh/" + userdata.id).then(a => a.json()).then(
+                        accountid => {
+                            console.log(accountid);
+                            setFromId(accountid);
+                        });
                 });
                 break;
             case "ghid":
@@ -122,6 +127,7 @@
                 break;
         }
     </script>
+
 </body>
 
 </html>
