@@ -21,7 +21,7 @@ function setCookie(cname, cvalue, exdays) {
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-let steps = Math.round(Math.log(Math.max(screen.width, screen.height)) / Math.log(6));
+let steps = Math.round(Math.log(Math.max(screen.width, screen.height)) / Math.log(4));
 let seed;
 if (getCookie("bgseed") == "") {
     seed = Math.random();
@@ -31,6 +31,6 @@ if (getCookie("bgseed") == "") {
 
 let prefix = "";
 for (var i = 0; i <= steps; i++) {
-    prefix += `<div class="progbg" style="background-image: url('https://picsum.photos/seed/${seed}/${Math.pow(7,i)}')">`;
+    prefix += `<div class="progbg" style="background-image: url('https://picsum.photos/seed/${seed}/${Math.pow(4,i)}')">`;
 }
 document.body.innerHTML = prefix + document.body.innerHTML + "</div>".repeat(steps);
