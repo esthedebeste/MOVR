@@ -41,7 +41,8 @@ app.use(express.static("public"));
 app.use(require("express-session")({
 	secret: Math.random().toString(),
 	resave: () => {},
-	saveUninitialized: () => {}
+	saveUninitialized: () => {},
+	sameSite: "lax"
 }));
 
 app.get('/', (req, res) => {
