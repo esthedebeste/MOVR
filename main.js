@@ -545,7 +545,7 @@ app.get("/api/getaccount/twitch/name/:name", (req, res) => {
 				}
 			}).then(result => {
 				db.query(`select id from movr_users where twitch_id=${result.data.data[0].id} limit 1`).then(result => {
-					res.send(result[0]);
+					res.send(result[0].ID);
 				});
 			});
 		});
@@ -577,7 +577,7 @@ app.get("/api/gettwitchname/:name", (req, res) => {
 			}).then(result => {
 				res.send(result.data.data[0].display_name);
 				db.query(`select id from movr_users where twitch_id=${result.data.data[0].id} limit 1`).then(result => {
-					res.send(result[0].ID);
+					res.send(result[0]);
 				});
 			});
 		});
