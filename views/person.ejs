@@ -132,6 +132,7 @@
                 fetch("/api/getaccount/twitch/name/" + name).then(a => a.text()).then(result => {
                     setFromId(result);
                 });
+                break;
             case "id":
                 setFromId(name);
                 break;
