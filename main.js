@@ -45,6 +45,7 @@ app.use(require("express-session")({
 	sameSite: "lax"
 }));
 
+
 app.get('/', (req, res) => {
 	res.render('index', {
 		ghid: ghcreds.id,
@@ -55,85 +56,24 @@ app.get('/', (req, res) => {
 		twitchid: twitchcreds.id
 	});
 });
-app.get('/gh/:name', (req, res) => {
-	res.render('person', {
-		from: "gh",
-		name: req.params.name,
-		sessionuserid: req.session.userid,
-		discordid: discordcreds.id,
-		discordredirectadd,
-		ghid: ghcreds.id,
-		githubredirect,
-		twitchredirect,
-		twitchid: twitchcreds.id
-	});
-});
-app.get('/ghid/:name', (req, res) => {
-	res.render('person', {
-		from: "ghid",
-		name: req.params.name,
-		sessionuserid: req.session.userid,
-		discordid: discordcreds.id,
-		discordredirectadd,
-		ghid: ghcreds.id,
-		githubredirect,
-		twitchredirect,
-		twitchid: twitchcreds.id
-	});
-});
-app.get('/twitch/:name', (req, res) => {
-	res.render('person', {
-		from: "twitch",
-		name: req.params.name,
-		sessionuserid: req.session.userid,
-		discordid: discordcreds.id,
-		discordredirectadd,
-		ghid: ghcreds.id,
-		githubredirect,
-		twitchredirect,
-		twitchid: twitchcreds.id
-	});
-});
-app.get('/id/:name', (req, res) => {
-	res.render('person', {
-		from: "id",
-		name: req.params.name,
-		sessionuserid: req.session.userid,
-		discordid: discordcreds.id,
-		discordredirectadd,
-		ghid: ghcreds.id,
-		githubredirect,
-		twitchredirect,
-		twitchid: twitchcreds.id
-	});
-});
 
 // #region API: Get accounts
 app.get("/api/getaccount/gh/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
-		db.query(`select id from movr_users where github_id=${id} limit 1`).then(result => res.send(result[0].ID.toString())).catch(e => console.error({
-			e,
-			line: 93
-		}));
+		db.query(`select id from movr_users where github_id=${id} limit 1`).then(result => res.send(result[0].ID.toString())).catch(e => console.error(e));
 });
 app.get("/api/getaccount/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
 		db.query(`select discord_id, github_id, twitch_id from movr_users where id=${id} limit 1`).then(result => {
 			res.send(result[0]);
-		}).catch(e => console.error({
-			e,
-			line: 103
-		}));
+		}).catch(e => console.error(e));
 });
 
 app.get("/deleteaccount", (req, res) => {
 	if (!isNaN(req.session.userid))
-		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error({
-			e,
-			line: 111
-		}));
+		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
 });
 // #endregion
 
@@ -230,19 +170,10 @@ function createAccountWithGH(github_id) {
 				// Get account id
 				db.query(`select id from movr_users where github_id=${github_id} limit 1`).then(id => {
 					resolve(id[0].ID);
-				}).catch(e => console.error({
-					e,
-					line: 211
-				}));
-			}).catch(e => console.error({
-				e,
-				line: 215
-			}));
+				}).catch(e => console.error(e));
+			}).catch(e => console.error(e));
 		}).catch(error => {
-			console.error({
-				e: error,
-				line: 218
-			});
+			console.error(error);
 			res.redirect("/");
 		});
 	});
@@ -254,17 +185,11 @@ function addGHToAccount(id, github_id) {
 			db.query(`update movr_users set github_id=${github_id} where id=${id} limit 1`).then(result => {
 				resolve(result);
 			}).catch(e => {
-				console.error({
-					e,
-					line: 91
-				});
+				console.error(e);
 				reject(e);
 			});
 		}).catch(e => {
-			console.error({
-				e,
-				line: 91
-			});
+			console.error(e);
 			reject(e);
 		});
 	});
@@ -496,19 +421,10 @@ function createAccountWithTwitch(twitch_id) {
 				// Get account id
 				db.query(`select id from movr_users where twitch_id=${twitch_id} limit 1`).then(id => {
 					resolve(id[0].ID);
-				}).catch(e => console.error({
-					e,
-					line: 211
-				}));
-			}).catch(e => console.error({
-				e,
-				line: 215
-			}));
+				}).catch(e => console.error(e));
+			}).catch(e => console.error(e));
 		}).catch(error => {
-			console.error({
-				e: error,
-				line: 218
-			});
+			console.error(error);
 			res.redirect("/");
 		});
 	});
@@ -520,17 +436,11 @@ function addTwitchToAccount(id, twitch_id) {
 			db.query(`update movr_users set twitch_id=${twitch_id} where id=${id} limit 1`).then(result => {
 				resolve(result);
 			}).catch(e => {
-				console.error({
-					e,
-					line: 91
-				});
+				console.error(e);
 				reject(e);
 			});
 		}).catch(e => {
-			console.error({
-				e,
-				line: 91
-			});
+			console.error(e);
 			reject(e);
 		});
 	});
@@ -584,6 +494,21 @@ app.get("/api/gettwitchname/:name", (req, res) => {
 		});
 });
 //#endregion
+
+// This HAS to be last so it doesn't override any other (api) urls.
+app.get('/:from/:name', (req, res) => {
+	res.render('person', {
+		from: req.params.from,
+		name: req.params.name,
+		sessionuserid: req.session.userid,
+		discordid: discordcreds.id,
+		discordredirectadd,
+		ghid: ghcreds.id,
+		githubredirect,
+		twitchredirect,
+		twitchid: twitchcreds.id
+	});
+});
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
 process.on('exit', function () {

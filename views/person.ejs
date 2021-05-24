@@ -137,6 +137,11 @@
                 setFromId(name);
                 break;
             default:
+                let div = document.createElement("div");
+                div.classList = "account";
+                div.style.backgroundColor = "#FF3300";
+                div.innerText = "This account type isn't supported.";
+                document.getElementById("accounts").appendChild(div);
                 break;
         }
     </script>
