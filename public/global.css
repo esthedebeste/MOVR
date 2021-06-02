@@ -22,6 +22,20 @@ body {
     align-items: center;
 }
 
+#loginbody {
+    top: 0vh;
+    bottom: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#login {
+    font-size: 3rem;
+    color: #fff;
+}
+
 #accountparent {
     display: flex;
     position: absolute;
@@ -37,20 +51,33 @@ body {
 }
 
 .account {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 14rem;
     font-size: 2rem;
     background-color: #fff;
     color: #000;
-    /* border: 0.5rem solid #f00;*/
-    padding: 1rem;
+    padding: 0.5rem;
     border-radius: 2rem;
-    margin-bottom: 2rem;
+    margin-top: 1rem;
+    text-decoration: none;
 }
 
 .logo {
+    display: inline;
     padding-right: 0.25em;
     padding-left: 0.25em;
-    width: 2em;
-    height: 2em;
+    width: 4rem;
+    height: 4rem;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .smallcaps {
