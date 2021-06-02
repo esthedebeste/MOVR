@@ -83,9 +83,8 @@ app.get("/deleteaccount", (req, res) => {
 
 
 //#region general
-function createAccountWith(type, id, str = false) {
-	if (str)
-		id = "'" + id + "'";
+function createAccountWith(type, id) {
+	id = "'" + id + "'";
 	return new Promise((resolve, reject) => {
 		// Existing check
 		db.query(`select id from movr_users where ${type}=${id} limit 1`).then(result => {
@@ -105,7 +104,7 @@ function createAccountWith(type, id, str = false) {
 	});
 }
 
-function addToAccount(type, movrid, id, str = false) {
+function addToAccount(type, movrid, id) {
 	return new Promise((resolve, reject) => {
 		db.query(`delete from movr_users where ${type}=${id}`).then(() => {
 			db.query(`update movr_users set ${type}=${id} where id=${movrid} limit 1`).then(result => {
@@ -211,7 +210,7 @@ app.get("/discordcallback", async (req, res) => {
 		loginToDiscord(code, discordredirect).then(session => {
 			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
-				createAccountWith("discord_id", id, true).then(userid => {
+				createAccountWith("discord_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -276,7 +275,7 @@ app.get("/discordcallbackadd", (req, res) => {
 			loginToDiscord(code, discordredirectadd).then(session => {
 				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
-					addToAccount("discord_id", req.session.userid, id, true).then(userid => {
+					addToAccount("discord_id", req.session.userid, id).then(userid => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
@@ -383,10 +382,10 @@ function getTwitchUserId(token) {
 
 app.get("/api/getaccount/twitch/name/:name", (req, res) => {
 	if (typeof (req.params.name) != "undefined")
-		axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`).then(creds => {
+		getBearerKey().then(creds => {
 			axios.get(`https://api.twitch.tv/helix/users?login=${req.params.name}`, {
 				headers: {
-					Authorization: `Bearer ${creds.data.access_token}`,
+					Authorization: `Bearer ${creds.access_token}`,
 					"Client-Id": twitchcreds.id
 				}
 			}).then(result => {
@@ -402,11 +401,19 @@ let bearerKeyCache = null;
 function getBearerKey() {
 	return new Promise((resolve, reject) => {
 		if (bearerKeyCache == null || bearerKeyCache.timestamp < Date.now() + 5000)
-			axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`).then(creds =>
+			axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`, {
+				headers: {
+					"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36"
+				}
+			}).then(creds =>
 				resolve(bearerKeyCache = {
 					access_token: creds.data.access_token,
 					timestamp: creds.data.expires_in * 1000 + Date.now()
-				})).catch(reject);
+				})
+			).catch(err => {
+				console.error(err);
+				reject(err);
+			});
 		else
 			resolve(bearerKeyCache);
 	});
@@ -532,18 +539,21 @@ function getOAuthRequestToken(oauth) {
 
 app.get("/api/gettwittername/:userId", (req, res) => {
 	if (!isNaN(req.params.userId)) {
-		loginOauth.get(`https://api.twitter.com/1.1/users/show.json?user_id=${req.params.userId}`, twittercreds.accesstoken, twittercreds.accesstokensecret, (e, data, r) => {
-			if (e)
-				res.send(JSON.stringify(e));
-			else
-				res.send(data);
+		axios.get(`https://api.twitter.com/1.1/users/show.json?user_id=${req.params.userId}&include_entities=false`, {
+			headers: {
+				authorization: `Bearer ${twittercreds.bearertoken}`
+			}
+		}).then(data => {
+			res.send(data.data);
+		}).catch(() => {
+			res.status(500).send();
 		});
 	} else
 		res.status(400).send();
 });
 app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 	if (typeof req.params.screenName !== "undefined") {
-		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.params.screenName}`, {
+		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.params.screenName}&include_entities=false`, {
 			headers: {
 				authorization: `Bearer ${twittercreds.bearertoken}`
 			}
@@ -556,18 +566,205 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 
 
 //#endregion
+
+//#region embed
+function getData(from, name) {
+	return new Promise((resolve, reject) => {
+		switch (from) {
+			case "gh":
+				axios.get("https://api.github.com/users/" + name, {
+					auth: ghcreds.tokenauth
+				}).then(userdata => {
+					userdata.data.data.name = userdata.data.name;
+					userdata.data.html_url = userdata.data.html_url;
+					userdata.data.picture = userdata.data.avatar_url;
+					db.query(`select * from movr_users where github_id=${userdata.data.id} limit 1`).then(result => resolve({
+						dbdata: result[0],
+						userdata: {
+							"GITHUB_ID": userdata.data
+						}
+					})).catch(e => reject("Uh Oh!"));
+				}).catch(err => reject("GitHub Error."));
+				break;
+			case "ghid":
+				if (isNaN(name))
+					return reject("Invalid ID.");
+				db.query(`select * from movr_users where github_id=${name} limit 1`).then(result => resolve({
+					dbdata: result[0]
+				})).catch(e => reject("Uh Oh!"));
+				break;
+			case "twitch":
+				getBearerKey().then(creds => {
+					axios.get(`https://api.twitch.tv/helix/users?login=${name}`, {
+						headers: {
+							Authorization: `Bearer ${creds.access_token}`,
+							"Client-Id": twitchcreds.id
+						}
+					}).then(result => {
+						result.data.data[0].name = result.data.data[0].display_name;
+						result.data.data[0].html_url = "https://twitch.tv/" + result.data.data[0].login;
+						result.data.data[0].picture = result.data.data[0].profile_image_url;
+						db.query(`select * from movr_users where twitch_id='${result.data.data[0].id}' limit 1`).then(dbres => resolve({
+							dbdata: dbres[0],
+							userdata: {
+								"TWITCH_ID": result.data.data[0]
+							}
+						})).catch(e => {
+							console.error(e);
+							reject(e);
+						});
+					}).catch(err => reject(err));
+				}).catch(err => console.error(err));
+				break;
+			case "twitter":
+				axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${name}&include_entities=false`, {
+					headers: {
+						authorization: `Bearer ${twittercreds.bearertoken}`
+					}
+				}).then(data => {
+					data.data.html_url = "https://twitter.com/" + data.data.screen_name;
+					data.data.picture = data.data.profile_image_url_https.replace("_normal", "");
+					data.data.entities = {};
+					db.query(`select * from movr_users where twitter_id='${data.data.id_str}' limit 1`).then(result => resolve({
+						dbdata: result[0],
+						userdata: {
+							"TWITTER_ID": data.data
+						}
+					})).catch(e => reject("Uh Oh!"));
+				}).catch(err => {
+					console.error(err);
+					reject("Twitter Error.");
+				});
+				break;
+			case "id":
+				if (isNaN(name))
+					return reject("Invalid ID.");
+				db.query(`select * from movr_users where id='${name}' limit 1`).then(result => resolve({
+					dbdata: result[0]
+				})).catch(e => reject("Uh Oh!"));
+				break;
+			default:
+				reject("Method Not Found");
+				break;
+		}
+	});
+}
+
+let sortStyle = ["GITHUB_ID", "TWITTER_ID", "DISCORD_ID", "TWITCH_ID"];
+
+function getProfile(dbdata, userdata) {
+	return new Promise((resolve, reject) => {
+		if (typeof userdata !== "undefined")
+			resolve(userdata);
+		else
+			for (let sort of sortStyle) {
+				let id = dbdata[sort];
+				if (id != null)
+					switch (sort) {
+						case "GITHUB_ID":
+							axios.get("https://api.github.com/user/" + id).then(result => {
+								let finalObject = {};
+								finalObject[sort] = {
+									name: result.data.name,
+									html_url: result.data.html_url,
+									picture: result.data.avatar_url
+								};
+								return resolve(finalObject);
+							}).catch(err => {
+								let finalObject = {};
+								finalObject[sort] = {
+									name: "try again later",
+									picture: "https://movr.eu-gb.mybluemix.net/favicon.png"
+								};
+								resolve(finalObject);
+							});
+							break;
+						case "TWITTER_ID":
+							axios.get(`https://api.twitter.com/1.1/users/show.json?user_id=${id}&include_entities=false`, {
+								headers: {
+									authorization: `Bearer ${twittercreds.bearertoken}`
+								}
+							}).then(result => {
+								let finalObject = {};
+								finalObject[sort] = {
+									name: result.data.name,
+									html_url: "https://twitter.com/" + result.data.screen_name,
+									picture: result.data.profile_image_url_https
+								};
+								return resolve(finalObject);
+							});
+							break;
+						case "DISCORD_ID":
+							axios.get(`https://discord.com/api/v8/users/${id}`, {
+								headers: {
+									Authorization: `Bot ${discordcreds.bot}`
+								}
+							}).then(result => {
+								let finalObject = {};
+								finalObject[sort] = {
+									name: result.data.username,
+									picture: `https://cdn.discordapp.com/${result.data.id}/${result.data.avatar}.png`
+								};
+								return resolve(finalObject);
+							});
+							break;
+						case "TWITCH_ID":
+							getBearerKey().then(creds =>
+								axios.get(`https://api.twitch.tv/helix/users?id=${id}`, {
+									headers: {
+										Authorization: `Bearer ${creds.access_token}`,
+										"Client-Id": twitchcreds.id
+									}
+								}).then(result => {
+									let finalObject = {};
+									finalObject[sort] = {
+										name: result.data.display_name,
+										html_url: "https://twitch.tv/" + result.data.login,
+										picture: result.data.profile_image_url
+									};
+									return resolve(finalObject);
+								})
+							);
+							break;
+						default:
+							resolve({});
+							break;
+					}
+			}
+	});
+}
+//#endregion
+
 // This HAS to be last so it doesn't override any other (api) urls.
 app.get('/:from/:name', (req, res) => {
-	res.render('person', {
-		from: req.params.from,
-		name: req.params.name,
-		sessionuserid: req.session.userid,
-		discordid: discordcreds.id,
-		discordredirectadd,
-		ghid: ghcreds.id,
-		githubredirect,
-		twitchredirect,
-		twitchid: twitchcreds.id
+	const from = req.params.from;
+	const name = req.params.name;
+	getData(from, name).then(data => {
+		if (typeof data.dbdata === "undefined")
+			res.status(404).render('error', {
+				error: "This account type isn't implemented."
+			});
+		else
+			getProfile(data.dbdata, data.userdata).then(result => {
+				res.render('person', {
+					from: req.params.from,
+					name: req.params.name,
+					sessionuserid: req.session.userid,
+					discordid: discordcreds.id,
+					discordredirectadd,
+					ghid: ghcreds.id,
+					githubredirect,
+					twitchredirect,
+					twitchid: twitchcreds.id,
+					ids: data.dbdata || {},
+					precachedaccount: result
+				});
+			});
+	}).catch(err => {
+		if (typeof err === "string")
+			res.status(418).render('error', {
+				error: err
+			});
 	});
 });
 
