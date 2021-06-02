@@ -1,11 +1,13 @@
 const ibmdb = require("ibm_db");
 const express = require('express');
 const axios = require("axios").default;
+const oauth = require("oauth");
 const app = express();
 const port = process.env.PORT || 3000;
 const ghcreds = require("./ghclientcreds.json");
 const discordcreds = require("./discordcreds.json");
 const twitchcreds = require("./twitchcreds.json");
+const twittercreds = require("./twittercreds.json");
 
 let db2;
 let testingenv = false;
@@ -13,6 +15,7 @@ let discordredirect = "https%3A%2F%2Fmovr.eu-gb.mybluemix.net%2Fdiscordcallback"
 let discordredirectadd = "https%3A%2F%2Fmovr.eu-gb.mybluemix.net%2Fdiscordcallbackadd";
 let githubredirect = "https://movr.eu-gb.mybluemix.net/ghcallback";
 let twitchredirect = "https://movr.eu-gb.mybluemix.net/twitchcallback";
+let url = "https://movr.eu-gb.mybluemix.net/";
 if (process.env.VCAP_SERVICES) {
 	let env = JSON.parse(process.env.VCAP_SERVICES);
 	if (env.dashDB)
@@ -27,6 +30,7 @@ if (process.env.VCAP_SERVICES) {
 	discordredirectadd = "http%3A%2F%2Flocalhost%3A3000%2Fdiscordcallbackadd";
 	githubredirect = "http://localhost:3000/ghcallback";
 	twitchredirect = "http://localhost:3000/twitchcallback";
+	url = "http://localhost:3000/";
 	db2 = require("./db2creds.json");
 }
 
@@ -66,7 +70,7 @@ app.get("/api/getaccount/gh/:id", (req, res) => {
 app.get("/api/getaccount/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
-		db.query(`select discord_id, github_id, twitch_id from movr_users where id=${id} limit 1`).then(result => {
+		db.query(`select * from movr_users where id=${id} limit 1`).then(result => {
 			res.send(result[0]);
 		}).catch(e => console.error(e));
 });
@@ -77,6 +81,46 @@ app.get("/deleteaccount", (req, res) => {
 });
 // #endregion
 
+
+//#region general
+function createAccountWith(type, id, str = false) {
+	if (str)
+		id = "'" + id + "'";
+	return new Promise((resolve, reject) => {
+		// Existing check
+		db.query(`select id from movr_users where ${type}=${id} limit 1`).then(result => {
+			if (result.length > 0)
+				return resolve(result[0].ID);
+			// Create account
+			db.query(`insert into movr_users (${type}) values (${id})`).then(result => {
+				// Get account id
+				db.query(`select id from movr_users where ${type}=${id} limit 1`).then(id => {
+					resolve(id[0].ID);
+				}).catch(e => console.error(e));
+			}).catch(e => console.error(e));
+		}).catch(error => {
+			console.error(error);
+			res.redirect("/");
+		});
+	});
+}
+
+function addToAccount(type, movrid, id, str = false) {
+	return new Promise((resolve, reject) => {
+		db.query(`delete from movr_users where ${type}=${id}`).then(() => {
+			db.query(`update movr_users set ${type}=${id} where id=${movrid} limit 1`).then(result => {
+				resolve(result);
+			}).catch(e => {
+				console.error(e);
+				reject(e);
+			});
+		}).catch(e => {
+			console.error(e);
+			reject(e);
+		});
+	});
+}
+//#endregion
 //#region github
 app.get("/ghcallback", async (req, res) => {
 	let code = req.query.code;
@@ -84,7 +128,7 @@ app.get("/ghcallback", async (req, res) => {
 		loginToGithub(code, githubredirect).then(session => {
 			req.session.ghtoken = session.access_token;
 			getGithubUserId(session.access_token).then(id => {
-				createAccountWithGH(id).then(userid => {
+				createAccountWith("github_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -107,7 +151,7 @@ app.get("/ghcallback/add", async (req, res) => {
 			loginToGithub(code, githubredirect + "/add").then(session => {
 				req.session.githubtoken = session.access_token;
 				getGithubUserId(session.access_token).then(id => {
-					addGHToAccount(req.session.userid, id).then(() => {
+					addToAccount("github_id", req.session.userid, id).then(() => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
@@ -159,43 +203,7 @@ function getGithubUserId(token) {
 	});
 }
 
-function createAccountWithGH(github_id) {
-	return new Promise((resolve, reject) => {
-		// Existing check
-		db.query(`select id from movr_users where github_id=${github_id} limit 1`).then(result => {
-			if (result.length > 0)
-				return resolve(result[0].ID);
-			// Create account
-			db.query(`insert into movr_users (github_id) values (${github_id})`).then(result => {
-				// Get account id
-				db.query(`select id from movr_users where github_id=${github_id} limit 1`).then(id => {
-					resolve(id[0].ID);
-				}).catch(e => console.error(e));
-			}).catch(e => console.error(e));
-		}).catch(error => {
-			console.error(error);
-			res.redirect("/");
-		});
-	});
-}
-
-function addGHToAccount(id, github_id) {
-	return new Promise((resolve, reject) => {
-		db.query(`delete from movr_users where github_id=${github_id}`).then(() => {
-			db.query(`update movr_users set github_id=${github_id} where id=${id} limit 1`).then(result => {
-				resolve(result);
-			}).catch(e => {
-				console.error(e);
-				reject(e);
-			});
-		}).catch(e => {
-			console.error(e);
-			reject(e);
-		});
-	});
-}
 //#endregion
-
 //#region discord
 app.get("/discordcallback", async (req, res) => {
 	let code = req.query.code;
@@ -203,7 +211,7 @@ app.get("/discordcallback", async (req, res) => {
 		loginToDiscord(code, discordredirect).then(session => {
 			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
-				createAccountWithDiscord(id).then(userid => {
+				createAccountWith("discord_id", id, true).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -261,26 +269,6 @@ function getDiscordUserId(token) {
 	});
 }
 
-function createAccountWithDiscord(discord_id) {
-	return new Promise((resolve, reject) => {
-		// Existing check
-		db.query(`select id from movr_users where discord_id='${discord_id}' limit 1`).then(result => {
-			if (result.length > 0)
-				return resolve(result[0].ID);
-			// Create account
-			db.query(`insert into movr_users (discord_id) values ('${discord_id}')`).then(result => {
-				// Get account id
-				db.query(`select id from movr_users where discord_id='${discord_id}' limit 1`).then(id => {
-					resolve(id[0].ID);
-				});
-			});
-		}).catch(error => {
-			console.error(error.toString());
-			res.redirect("/");
-		});
-	});
-}
-
 app.get("/discordcallbackadd", (req, res) => {
 	let code = req.query.code;
 	if (code)
@@ -288,7 +276,7 @@ app.get("/discordcallbackadd", (req, res) => {
 			loginToDiscord(code, discordredirectadd).then(session => {
 				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
-					addDiscordToAccount(req.session.userid, id).then(userid => {
+					addToAccount("discord_id", req.session.userid, id, true).then(userid => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
@@ -319,25 +307,8 @@ app.get("/getdiscordname/:discordid", (req, res) => {
 	}
 });
 
-function addDiscordToAccount(id, discord_id) {
-	return new Promise((resolve, reject) => {
-		db.query(`delete from movr_users where discord_id='${discord_id}'`).then(() => {
-			db.query(`update movr_users set discord_id='${discord_id}' where id=${id} limit 1`).then(result => {
-				resolve(result);
-			}).catch(error => {
-				console.error(error.toString());
-				reject(error);
-			});
-		}).catch(error => {
-			console.error(error.toString());
-			reject(error);
-		});
-	});
-}
-
 
 //#endregion
-
 //#region twitch
 app.get("/twitchcallback", async (req, res) => {
 	let code = req.query.code;
@@ -345,7 +316,7 @@ app.get("/twitchcallback", async (req, res) => {
 		loginToTwitch(code, twitchredirect).then(session => {
 			req.session.twitchtoken = session.access_token;
 			getTwitchUserId(session.access_token).then(id => {
-				createAccountWithTwitch(id).then(userid => {
+				createAccountWith("twitch_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -368,7 +339,7 @@ app.get("/twitchcallback/add", async (req, res) => {
 			loginToTwitch(code, twitchredirect + "/add").then(session => {
 				req.session.twitchtoken = session.access_token;
 				getTwitchUserId(session.access_token).then(id => {
-					addTwitchToAccount(req.session.userid, id).then(() => {
+					addToAccount("twitch_id", req.session.userid, id).then(() => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
@@ -407,42 +378,6 @@ function getTwitchUserId(token) {
 		}).then(result => {
 			resolve(result.data.data[0].id);
 		}).catch(reject);
-	});
-}
-
-function createAccountWithTwitch(twitch_id) {
-	return new Promise((resolve, reject) => {
-		// Existing check
-		db.query(`select id from movr_users where twitch_id=${twitch_id} limit 1`).then(result => {
-			if (result.length > 0)
-				return resolve(result[0].ID);
-			// Create account
-			db.query(`insert into movr_users (twitch_id) values (${twitch_id})`).then(result => {
-				// Get account id
-				db.query(`select id from movr_users where twitch_id=${twitch_id} limit 1`).then(id => {
-					resolve(id[0].ID);
-				}).catch(e => console.error(e));
-			}).catch(e => console.error(e));
-		}).catch(error => {
-			console.error(error);
-			res.redirect("/");
-		});
-	});
-}
-
-function addTwitchToAccount(id, twitch_id) {
-	return new Promise((resolve, reject) => {
-		db.query(`delete from movr_users where twitch_id=${twitch_id}`).then(() => {
-			db.query(`update movr_users set twitch_id=${twitch_id} where id=${id} limit 1`).then(result => {
-				resolve(result);
-			}).catch(e => {
-				console.error(e);
-				reject(e);
-			});
-		}).catch(e => {
-			console.error(e);
-			reject(e);
-		});
 	});
 }
 
@@ -494,7 +429,133 @@ app.get("/api/gettwitchname/:name", (req, res) => {
 		});
 });
 //#endregion
+//#region twitter
+const loginOauth = new oauth.OAuth(
+	"https://twitter.com/oauth/request_token", "https://twitter.com/oauth/access_token",
+	twittercreds.apikey,
+	twittercreds.apisecret,
+	"1.0A", url + "twittercallback", "HMAC-SHA1");
+const addOauth = new oauth.OAuth(
+	"https://twitter.com/oauth/request_token", "https://twitter.com/oauth/access_token",
+	twittercreds.apikey,
+	twittercreds.apisecret,
+	"1.0A", url + "twittercallback/add", "HMAC-SHA1");
+app.get("/twitterauth/login", twitter("authenticate", loginOauth));
+app.get("/twitterauth/add", twitter("authorize", addOauth));
 
+function twitter(method, oauth) {
+	return async (req, res) => {
+		getOAuthRequestToken(oauth).then(result => {
+			const {
+				oauthRequestToken,
+				oauthRequestTokenSecret
+			} = result;
+			req.session.twitterOauthRequestToken = oauthRequestToken;
+			req.session.twitterOauthRequestTokenSecret = oauthRequestTokenSecret;
+
+			const authorizationUrl = `https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`;
+			console.log("redirecting user to ", authorizationUrl);
+			res.redirect(authorizationUrl);
+		}).catch(error => res.send(JSON.stringify(error)));
+	};
+}
+
+
+function getOAuthAccessTokenWith(
+	oauthRequestToken,
+	oauthRequestTokenSecret,
+	oauthVerifier, oauth) {
+	return new Promise((resolve, reject) => {
+		oauth.getOAuthAccessToken(oauthRequestToken, oauthRequestTokenSecret, oauthVerifier, function (error, oauthAccessToken, oauthAccessTokenSecret, results) {
+			return error ?
+				reject(error) :
+				resolve({
+					oauthAccessToken,
+					oauthAccessTokenSecret,
+					results
+				});
+		});
+	});
+}
+
+function twitterCallback(req, res, oauth) {
+	return new Promise((resolve, reject) => {
+		const {
+			twitterOauthRequestToken,
+			twitterOauthRequestTokenSecret
+		} = req.session;
+		const {
+			oauth_verifier: oauthVerifier
+		} = req.query;
+		getOAuthAccessTokenWith(
+			twitterOauthRequestToken,
+			twitterOauthRequestTokenSecret,
+			oauthVerifier, oauth).then(result => {
+			const {
+				oauthAccessToken,
+				oauthAccessTokenSecret,
+				results
+			} = result;
+			req.session.oauthAccessTokenSecret = oauthAccessTokenSecret;
+			req.session.oauthAccessToken = oauthAccessToken;
+			resolve(results);
+		}).catch(error => res.send(JSON.stringify(error)));
+	});
+}
+app.get('/twittercallback', async (req, res) => {
+	twitterCallback(req, res, loginOauth).then(user => {
+		createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
+	});
+});
+app.get('/twittercallback/add', async (req, res) => {
+	if (typeof (req.session.userid) !== "undefined")
+		twitterCallback(req, res, addOauth).then(user => {
+			addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
+				res.redirect("/twitter/" + user.screen_name);
+			});
+		});
+});
+
+function getOAuthRequestToken(oauth) {
+	return new Promise((resolve, reject) => {
+		oauth.getOAuthRequestToken(function (error, oauthRequestToken, oauthRequestTokenSecret, results) {
+			if (error) reject(error);
+			else
+				resolve({
+					oauthRequestToken,
+					oauthRequestTokenSecret,
+					results
+				});
+		});
+	});
+}
+
+app.get("/api/gettwittername/:userId", (req, res) => {
+	if (!isNaN(req.params.userId)) {
+		loginOauth.get(`https://api.twitter.com/1.1/users/show.json?user_id=${req.params.userId}`, twittercreds.accesstoken, twittercreds.accesstokensecret, (e, data, r) => {
+			if (e)
+				res.send(JSON.stringify(e));
+			else
+				res.send(data);
+		});
+	} else
+		res.status(400).send();
+});
+app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
+	if (typeof req.params.screenName !== "undefined") {
+		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.params.screenName}`, {
+			headers: {
+				authorization: `Bearer ${twittercreds.bearertoken}`
+			}
+		}).then(data => {
+			db.query(`select id from movr_users where twitter_id='${data.data.id_str}' limit 1`).then(result => res.send(result[0].ID.toString())).catch(e => console.error(e));
+		});
+	} else
+		res.status(400).send();
+});
+
+
+//#endregion
 // This HAS to be last so it doesn't override any other (api) urls.
 app.get('/:from/:name', (req, res) => {
 	res.render('person', {
