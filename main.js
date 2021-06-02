@@ -26,11 +26,11 @@ if (process.env.VCAP_SERVICES) {
 		console.log(env);
 } else {
 	testingenv = true;
-	discordredirect = "http%3A%2F%2Flocalhost%3A3000%2Fdiscordcallback";
-	discordredirectadd = "http%3A%2F%2Flocalhost%3A3000%2Fdiscordcallbackadd";
-	githubredirect = "http://localhost:3000/ghcallback";
-	twitchredirect = "http://localhost:3000/twitchcallback";
-	url = "http://localhost:3000/";
+	discordredirect = "http%3A%2F%2Flocalhost%2Fdiscordcallback";
+	discordredirectadd = "http%3A%2F%2Flocalhost%2Fdiscordcallbackadd";
+	githubredirect = "http://localhost/ghcallback";
+	twitchredirect = "http://localhost/twitchcallback";
+	url = "http://localhost/";
 	db2 = require("./db2creds.json");
 }
 
