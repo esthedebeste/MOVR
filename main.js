@@ -571,11 +571,11 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 function getData(from, name) {
 	return new Promise((resolve, reject) => {
 		switch (from) {
-			case "gh":
+			case "github":
 				axios.get("https://api.github.com/users/" + name, {
 					auth: ghcreds.tokenauth
 				}).then(userdata => {
-					userdata.data.data.name = userdata.data.name;
+					userdata.data.name = userdata.data.name;
 					userdata.data.html_url = userdata.data.html_url;
 					userdata.data.picture = userdata.data.avatar_url;
 					db.query(`select * from movr_users where github_id=${userdata.data.id} limit 1`).then(result => resolve({
@@ -584,7 +584,10 @@ function getData(from, name) {
 							"GITHUB_ID": userdata.data
 						}
 					})).catch(e => reject("Uh Oh!"));
-				}).catch(err => reject("GitHub Error."));
+				}).catch(err => {
+					console.error(err);
+					reject("GitHub Error.");
+				});
 				break;
 			case "ghid":
 				if (isNaN(name))
