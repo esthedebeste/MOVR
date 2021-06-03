@@ -705,8 +705,8 @@ function getProfile(dbdata, userdata) {
 							}).then(result => {
 								let finalObject = {};
 								finalObject[sort] = {
-									name: result.data.username,
-									picture: `https://cdn.discordapp.com/${result.data.id}/${result.data.avatar}.png`
+									name: result.data.username + "#" + result.data.discriminator,
+									picture: `https://cdn.discordapp.com/avatars/${result.data.id}/${result.data.avatar}.png`
 								};
 								return resolve(finalObject);
 							});
