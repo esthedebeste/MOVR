@@ -57,7 +57,8 @@ app.get('/', (req, res) => {
 		discordredirect,
 		githubredirect,
 		twitchredirect,
-		twitchid: twitchcreds.id
+		twitchid: twitchcreds.id,
+		url
 	});
 });
 
@@ -760,7 +761,8 @@ app.get('/:from/:name', (req, res) => {
 					twitchredirect,
 					twitchid: twitchcreds.id,
 					ids: data.dbdata || {},
-					precachedaccount: result
+					precachedaccount: result,
+					url
 				});
 			});
 	}).catch(err => {

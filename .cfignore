@@ -2,3 +2,4 @@ node_modules
 db2creds.json
 .git
 .gitignore
+.vscode
