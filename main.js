@@ -39,6 +39,7 @@ console.log(`Connecting to database with hostname ${db2.hostname}...`);
 let db = ibmdb.openSync(connString);
 console.log("Connected!");
 
+
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 app.use(express.static("public"));
@@ -48,6 +49,13 @@ app.use(require("express-session")({
 	saveUninitialized: () => {},
 	sameSite: "lax"
 }));
+app.use(require("method-override")());
+
+function error(res, code = 500, errtext = "Internal Error.") {
+	res.status(code).render('error', {
+		error: errtext
+	});
+}
 
 
 app.get('/', (req, res) => {
@@ -61,6 +69,7 @@ app.get('/', (req, res) => {
 		url
 	});
 });
+
 
 // #region API: Get accounts
 app.get("/api/getaccount/gh/:id", (req, res) => {
@@ -81,8 +90,6 @@ app.get("/deleteaccount", (req, res) => {
 		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
 });
 // #endregion
-
-
 //#region general
 function createAccountWith(type, id) {
 	id = "'" + id + "'";
@@ -134,11 +141,11 @@ app.get("/ghcallback", async (req, res) => {
 					res.redirect("/id/" + userid);
 				}).catch(error => {
 					console.error(error.toString());
-					res.redirect("/");
+					error(res, 500, "Database Error.");
 				});
 			}).catch(error => {
 				console.error(error.toString());
-				res.redirect("/");
+				error(res, 500, "GitHub Error.");
 			});
 		});
 	else
@@ -217,18 +224,18 @@ app.get("/discordcallback", async (req, res) => {
 					res.redirect("/id/" + userid);
 				}).catch(error => {
 					console.error(error.toString());
-					res.redirect("/");
+					error(res, 500, "Database Error.");
 				});
 			}).catch(error => {
 				console.error(error.toString());
-				res.redirect("/");
+				error(res, 500, "Discord Error.");
 			});
 		}).catch(a => {
-			console.error("189" + a.toString());
-			res.send(JSON.stringify(a, null, ". . . ").replace(/\n/g, "<br>"));
+			console.error(a.toString());
+			error(res, 500);
 		});
 	else
-		res.redirect("/");
+		error(res, "Discord Callback Broken.");
 });
 
 function loginToDiscord(session, redirect) {
@@ -251,7 +258,6 @@ function loginToDiscord(session, redirect) {
 			// 	reject(a);
 			// });
 		}).catch(a => {
-			console.error("214" + a.toString());
 			reject(a);
 		});
 	});
@@ -280,19 +286,20 @@ app.get("/discordcallbackadd", (req, res) => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
-						res.redirect("/shit");
+						error(res, 500, "Database Error.");
 					});
 				}).catch(error => {
 					console.error(error.toString());
-					res.redirect("/fuck");
+					error(res, 500, "Discord Error.");
 				});
 			}).catch(a => {
-				res.send(JSON.stringify(a, null, ". . . ").replace(/\n/g, "<br>"));
+				console.error(a);
+				error(res, 500);
 			});
 		else
-			res.redirect("/kut");
+			error(res, 401, "Log in first!");
 	else
-		res.redirect("/tering");
+		error(res, 400, "Discord Callback Broken!");
 });
 
 app.get("/getdiscordname/:discordid", (req, res) => {
@@ -303,6 +310,8 @@ app.get("/getdiscordname/:discordid", (req, res) => {
 			}
 		}).then(result => {
 			res.send(result.data.username + "#" + result.data.discriminator);
+		}).catch(() => {
+			res.send("ERROR!");
 		});
 	}
 });
@@ -322,15 +331,15 @@ app.get("/twitchcallback", async (req, res) => {
 					res.redirect("/id/" + userid);
 				}).catch(error => {
 					console.error(error.toString());
-					res.redirect("/");
+					error(res, 500, "Database Errror.");
 				});
 			}).catch(error => {
 				console.error(error.toString());
-				res.redirect("/");
+				error(res, 500, "Twitch Error.");
 			});
 		});
 	else
-		res.redirect("/");
+		error(res, 400, "Twitch Callback Broken.");
 });
 app.get("/twitchcallback/add", async (req, res) => {
 	let code = req.query.code;
@@ -343,19 +352,20 @@ app.get("/twitchcallback/add", async (req, res) => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(error => {
 						console.error(error.toString());
-						res.redirect("/shit");
+						error(res, 500, "Database Errror.");
 					});
 				}).catch(error => {
 					console.error(error.toString());
-					res.redirect("/fuck");
+					error(res, 500, "Twitch Error.");
 				});
 			}).catch(a => {
-				res.send(JSON.stringify(a, null, ". . . ").replace(/\n/g, "<br>"));
+				console.error(a);
+				error(res, 500, "Twitch Error.");
 			});
 		else
-			res.redirect("/kut");
+			error(res, 401, "Log In First!");
 	else
-		res.redirect("/");
+		error(res, 400, "Twitch Callback Broken.");
 });
 
 function loginToTwitch(session, redirect) {
@@ -430,10 +440,15 @@ app.get("/api/gettwitchname/:name", (req, res) => {
 				}
 			}).then(result => {
 				res.send(result.data.data[0].display_name);
+
 				db.query(`select id from movr_users where twitch_id=${result.data.data[0].id} limit 1`).then(result => {
 					res.send(result[0]);
+				}).catch(err => {
+					error(res, 500, "Database Error.");
 				});
 			});
+		}).catch(err => {
+			error(res, 500, "Internal Twitch Error.");
 		});
 });
 //#endregion
@@ -464,7 +479,9 @@ function twitter(method, oauth) {
 			const authorizationUrl = `https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`;
 			console.log("redirecting user to ", authorizationUrl);
 			res.redirect(authorizationUrl);
-		}).catch(error => res.send(JSON.stringify(error)));
+		}).catch(err => {
+			error(res, 500, "Twitter Error.");
+		});
 	};
 }
 
@@ -507,7 +524,7 @@ function twitterCallback(req, res, oauth) {
 			req.session.oauthAccessTokenSecret = oauthAccessTokenSecret;
 			req.session.oauthAccessToken = oauthAccessToken;
 			resolve(results);
-		}).catch(error => res.send(JSON.stringify(error)));
+		}).catch(err => error(res));
 	});
 }
 app.get('/twittercallback', async (req, res) => {
@@ -547,10 +564,10 @@ app.get("/api/gettwittername/:userId", (req, res) => {
 		}).then(data => {
 			res.send(data.data);
 		}).catch(() => {
-			res.status(500).send();
+			error(res, 500, "Twitter Error.");
 		});
 	} else
-		res.status(400).send();
+		error(res, 400, "Invalid Params.");
 });
 app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 	if (typeof req.params.screenName !== "undefined") {
@@ -559,10 +576,13 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 				authorization: `Bearer ${twittercreds.bearertoken}`
 			}
 		}).then(data => {
-			db.query(`select id from movr_users where twitter_id='${data.data.id_str}' limit 1`).then(result => res.send(result[0].ID.toString())).catch(e => console.error(e));
+			db.query(`select id from movr_users where twitter_id='${data.data.id_str}' limit 1`).then(result => res.send(result[0].ID.toString())).catch(e => {
+				console.error(e);
+				error(res, 500, "Database Error");
+			});
 		});
 	} else
-		res.status(400).send();
+		error(res, 400, "Invalid Params.");
 });
 
 
@@ -745,9 +765,7 @@ app.get('/:from/:name', (req, res) => {
 	const name = req.params.name;
 	getData(from, name).then(data => {
 		if (typeof data.dbdata === "undefined")
-			res.status(404).render('error', {
-				error: "This account type isn't implemented."
-			});
+			error(res, 404, "This account type isn't supported.");
 		else
 			getProfile(data.dbdata, data.userdata).then(result => {
 				res.render('person', {
@@ -767,11 +785,10 @@ app.get('/:from/:name', (req, res) => {
 			});
 	}).catch(err => {
 		if (typeof err === "string")
-			res.status(418).render('error', {
-				error: err
-			});
+			error(res, 500, err);
 	});
 });
+app.get("*", (req, res) => error(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
 process.on('exit', function () {
