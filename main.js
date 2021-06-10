@@ -49,7 +49,6 @@ app.use(require("express-session")({
 	saveUninitialized: () => {},
 	sameSite: "lax"
 }));
-app.use(require("method-override")());
 
 function error(res, code = 500, errtext = "Internal Error.") {
 	res.status(code).render('error', {
