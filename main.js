@@ -13,6 +13,7 @@ const {
 	escape
 } = require("sqlstring");
 const session = require("express-session");
+const crypto = require("crypto");
 
 let db2;
 let testingenv = false;
