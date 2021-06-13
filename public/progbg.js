@@ -1,34 +1,22 @@
-function getCookie(cname) {
-    var name = cname + "=";
-    var decodedCookie = decodeURIComponent(document.cookie);
-    var ca = decodedCookie.split(';');
-    for (var i = 0; i < ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
+function setWithExpiry() {
+    const now = Date.now() + 180000; // 3 minutes
+    localStorage.setItem("bgseed", now);
+    return now;
+}
+
+function getBgSeed(key) {
+    const item = localStorage.getItem(key);
+    if (isNaN(item)) {
+        return setWithExpiry();
     }
-    return "";
+    if (Date.now() > parseInt(item)) {
+        localStorage.removeItem(key);
+        return setWithExpiry();
+    }
+    return item;
 }
-
-function setCookie(cname, cvalue, exdays) {
-    var d = new Date();
-    d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-    var expires = "expires=" + d.toUTCString();
-    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-}
-
-let steps = Math.round(Math.log(Math.max(screen.width, screen.height)) / Math.log(4));
-let seed;
-if (getCookie("bgseed") == "") {
-    seed = Math.random();
-    setCookie("bgseed", seed, 3 / 24 / 60);
-} else
-    seed = getCookie("bgseed");
-
+const steps = Math.round(Math.log(Math.max(screen.width, screen.height)) / Math.log(4));
+const seed = getBgSeed();
 let prefix = "";
 for (var i = 0; i <= steps; i++) {
     prefix += `<div class="progbg" style="background-image: url('https://picsum.photos/seed/${seed}/${Math.pow(4,i)}')">`;

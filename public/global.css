@@ -54,7 +54,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    text-align: center;
     width: 14rem;
+    height: 4rem;
     font-size: 2rem;
     background-color: #fff;
     color: #000;
@@ -80,8 +82,18 @@ body {
     padding-left: 0.25em;
     width: 4rem;
     height: 4rem;
-    margin-top: auto;
-    margin-bottom: auto;
+}
+
+.inline {
+    display: inline;
+}
+
+.signinwith {
+    fill: black;
+    padding-right: 0.25em;
+    padding-left: 0.25em;
+    max-width: 14rem;
+    margin: auto;
 }
 
 .center {
