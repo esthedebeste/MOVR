@@ -9,14 +9,10 @@ const discordcreds = require("./discordcreds.json");
 const twitchcreds = require("./twitchcreds.json");
 const twittercreds = require("./twittercreds.json");
 const steamcreds = require("./steamcreds.json");
-const secrets = require("./secrets.json");
 const {
 	escape
 } = require("sqlstring");
 const session = require("express-session");
-const {
-	EventEmitter
-} = require("events");
 
 let db2;
 let testingenv = false;
@@ -56,9 +52,6 @@ app.use(session({
 	secret: crypto.randomBytes(64).toString("utf16le"),
 	resave: false,
 	saveUninitialized: false,
-	store: new session.Store({
-
-	}),
 	sameSite: "lax",
 	cookie: {
 		secure: !testingenv
