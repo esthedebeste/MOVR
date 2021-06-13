@@ -9,12 +9,14 @@ const discordcreds = require("./discordcreds.json");
 const twitchcreds = require("./twitchcreds.json");
 const twittercreds = require("./twittercreds.json");
 const steamcreds = require("./steamcreds.json");
+const secrets = require("./secrets.json");
 const {
 	escape
 } = require("sqlstring");
+const session = require("express-session");
 const {
-	promisify
-} = require("util");
+	EventEmitter
+} = require("events");
 
 let db2;
 let testingenv = false;
@@ -50,11 +52,18 @@ console.log("Connected!");
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 app.use(express.static("public"));
-app.use(require("express-session")({
-	secret: Math.random().toString(),
-	resave: () => {},
-	saveUninitialized: () => {},
-	sameSite: "lax"
+app.use(session({
+	secret: crypto.randomBytes(64).toString("utf16le"),
+	resave: false,
+	saveUninitialized: false,
+	store: new session.Store({
+
+	}),
+	sameSite: "lax",
+	cookie: {
+		secure: !testingenv
+	},
+	name: "movr-sid"
 }));
 
 function error(res, code = 500, errtext = "Internal Error.") {
@@ -76,8 +85,7 @@ app.get('/', (req, res) => {
 	});
 });
 
-
-// #region API: Get accounts
+//#region API: Get accounts
 app.get("/api/getaccount/gh/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
@@ -270,17 +278,7 @@ function loginToDiscord(session, redirect) {
 				"Content-Type": "application/x-www-form-urlencoded",
 			}
 		}).then(result => {
-			// // Refresh? Probably not necessary but I'll keep it commented in case it is.
-			// axios.post("https://discord.com/api/oauth2/token", {
-			// 	client_id: discordcreds.id,
-			// 	client_secret: discordcreds.secret,
-			// 	refresh_token: result.data.refresh_token,
-			// 	grant_type: "refresh_token"
-			// }).then(result => {
 			resolve(result.data);
-			// }).catch(a => {
-			// 	reject(a);
-			// });
 		}).catch(a => {
 			reject(a);
 		});
