@@ -790,7 +790,7 @@ function getProfile(dbdata, userdata) {
 		else
 			for (let sort of sortStyle) {
 				let id = dbdata[sort];
-				if (id != null)
+				if (id != null) {
 					switch (sort) {
 						case "GITHUB_ID":
 							axios.get("https://api.github.com/user/" + id).then(result => {
@@ -800,7 +800,7 @@ function getProfile(dbdata, userdata) {
 									html_url: result.data.html_url,
 									picture: result.data.avatar_url
 								};
-								return resolve(finalObject);
+								resolve(finalObject);
 							}).catch(err => {
 								let finalObject = {};
 								finalObject[sort] = {
@@ -822,7 +822,7 @@ function getProfile(dbdata, userdata) {
 									html_url: "https://twitter.com/" + result.data.screen_name,
 									picture: result.data.profile_image_url_https
 								};
-								return resolve(finalObject);
+								resolve(finalObject);
 							});
 							break;
 						case "DISCORD_ID":
@@ -836,7 +836,7 @@ function getProfile(dbdata, userdata) {
 									name: result.data.username + "#" + result.data.discriminator,
 									picture: `https://cdn.discordapp.com/avatars/${result.data.id}/${result.data.avatar}.png`
 								};
-								return resolve(finalObject);
+								resolve(finalObject);
 							});
 							break;
 						case "TWITCH_ID":
@@ -853,14 +853,29 @@ function getProfile(dbdata, userdata) {
 										html_url: "https://twitch.tv/" + result.data.login,
 										picture: result.data.profile_image_url
 									};
-									return resolve(finalObject);
+									resolve(finalObject);
 								})
 							);
+							break;
+						case "STEAM_ID":
+							axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${id}`)
+								.then(result => {
+									let finalObject = {};
+									finalObject[sort] = {
+										name: result.data.response.players[0].personaname,
+										html_url: result.data.response.players[0].profileurl,
+										picture: result.data.response.players[0].avatarfull
+									};
+									resolve(finalObject);
+								})
+								.catch(err => reject("Steam Errror."));
 							break;
 						default:
 							resolve({});
 							break;
 					}
+					break;
+				}
 			}
 	});
 }
