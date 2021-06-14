@@ -218,7 +218,8 @@ function getGithubUserId(token) {
 	return new Promise((resolve, reject) => {
 		axios.get("https://api.github.com/user", {
 			headers: {
-				Authorization: `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
+				"User-Agent": "MOVR"
 			}
 		}).then(result => {
 			resolve(result.data.id);
@@ -635,7 +636,10 @@ function getData(from, name) {
 		switch (from) {
 			case "github":
 				axios.get("https://api.github.com/users/" + name, {
-					auth: ghcreds.tokenauth
+					auth: ghcreds.tokenauth,
+					headers: {
+						"User-Agent": "MOVR"
+					}
 				}).then(userdata => {
 					userdata.data.name = userdata.data.name;
 					userdata.data.html_url = userdata.data.html_url;
@@ -776,7 +780,12 @@ function getProfile(dbdata, userdata) {
 				if (id != null) {
 					switch (sort) {
 						case "GITHUB_ID":
-							axios.get("https://api.github.com/user/" + id).then(result => {
+							axios.get("https://api.github.com/user/" + id, {
+								auth: ghcreds.tokenauth,
+								headers: {
+									"User-Agent": "MOVR"
+								}
+							}).then(result => {
 								let finalObject = {};
 								finalObject[sort] = {
 									name: result.data.name,
