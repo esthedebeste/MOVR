@@ -7,7 +7,7 @@
     "start": "node main.js"
   },
   "author": "tbhmens",
-  "license": "ISC",
+  "license": "CC0-1.0",
   "dependencies": {
     "@tbhmens/steam-auth": "^1.0.4",
     "axios": "^0.21.1",

@@ -124,15 +124,15 @@
                             switch (account) {
                                 case "GITHUB_ID":
                                     location =
-                                        "https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= ghid %>&redirect_uri=<%=githubredirect%>/add";
+                                        "https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= ghid %>&redirect_uri=<%=url%>ghcallback/add";
                                     break;
                                 case "DISCORD_ID":
                                     location =
-                                        `https://discord.com/api/oauth2/authorize?client_id=<%= discordid %>&redirect_uri=<%= discordredirectadd %>&response_type=code&scope=identify&prompt=consent`;
+                                        `https://discord.com/api/oauth2/authorize?client_id=<%= discordid %>&redirect_uri=<%= url %>discordcallbackadd&response_type=code&scope=identify&prompt=consent`;
                                     break;
                                 case "TWITCH_ID":
                                     location =
-                                        `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=<%=twitchid%>&redirect_uri=<%=twitchredirect%>/add&scope=user:read:email`;
+                                        `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=<%=twitchid%>&redirect_uri=<%=url%>twitchcallback/add&scope=user:read:email`;
                                     break;
                                 case "TWITTER_ID":
                                     location =

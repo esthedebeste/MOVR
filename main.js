@@ -8,19 +8,17 @@ const port = process.env.PORT || 80;
 import sqlstring from "sqlstring";
 import session from "express-session";
 import crypto from "crypto";
-const ghcreds = json("./ghclientcreds.json");
-const discordcreds = json("./discordcreds.json");
-const twitchcreds = json("./twitchcreds.json");
-const twittercreds = json("./twittercreds.json");
-const steamcreds = json("./steamcreds.json");
+const ghcreds = json("config/ghclientcreds.json");
+const discordcreds = json("config/discordcreds.json");
+const twitchcreds = json("config/twitchcreds.json");
+const twittercreds = json("config/twittercreds.json");
+const steamcreds = json("config/steamcreds.json");
+const movrconfig = json("config/movrconfig.json");
 
 let db2;
 let testingenv = false;
-let discordredirect = "https%3A%2F%2Fmovr.eu-gb.mybluemix.net%2Fdiscordcallback";
-let discordredirectadd = "https%3A%2F%2Fmovr.eu-gb.mybluemix.net%2Fdiscordcallbackadd";
-let githubredirect = "https://movr.eu-gb.mybluemix.net/ghcallback";
-let twitchredirect = "https://movr.eu-gb.mybluemix.net/twitchcallback";
-let url = "https://movr.eu-gb.mybluemix.net/";
+// Format to a valid URL which ends with a /
+let url = new URL(movrconfig.url).toString();
 if (process.env.VCAP_SERVICES) {
 	let env = JSON.parse(process.env.VCAP_SERVICES);
 	if (env.dashDB)
@@ -31,12 +29,8 @@ if (process.env.VCAP_SERVICES) {
 		console.log(env);
 } else {
 	testingenv = true;
-	discordredirect = "http%3A%2F%2Flocalhost%2Fdiscordcallback";
-	discordredirectadd = "http%3A%2F%2Flocalhost%2Fdiscordcallbackadd";
-	githubredirect = "http://localhost/ghcallback";
-	twitchredirect = "http://localhost/twitchcallback";
 	url = "http://localhost/";
-	db2 = json("db2creds.json");
+	db2 = json("config/db2creds.json");
 }
 
 let connString = `DRIVER={DB2};DATABASE=${db2.db};HOSTNAME=${db2.hostname};UID=${db2.username};PWD=${db2.password};PORT=${db2.port+1};PROTOCOL=TCPIP;Security=SSL;`;
@@ -70,9 +64,6 @@ app.get('/', (req, res) => {
 	res.render('index', {
 		ghid: ghcreds.id,
 		discordid: discordcreds.id,
-		discordredirect,
-		githubredirect,
-		twitchredirect,
 		twitchid: twitchcreds.id,
 		url
 	});
@@ -240,7 +231,7 @@ function getGithubUserId(token) {
 app.get("/discordcallback", async (req, res) => {
 	let code = req.query.code;
 	if (code)
-		loginToDiscord(code, discordredirect).then(session => {
+		loginToDiscord(code, url + "discordcallback").then(session => {
 			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
 				createAccountWith("discord_id", id).then(userid => {
@@ -294,7 +285,7 @@ app.get("/discordcallbackadd", (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToDiscord(code, discordredirectadd).then(session => {
+			loginToDiscord(code, url + "discordcallbackadd").then(session => {
 				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
 					addToAccount("discord_id", req.session.userid, id).then(userid => {
@@ -338,7 +329,7 @@ app.get("/getdiscordname/:discordid", (req, res) => {
 app.get("/twitchcallback", async (req, res) => {
 	let code = req.query.code;
 	if (code)
-		loginToTwitch(code, twitchredirect).then(session => {
+		loginToTwitch(code, url + "twitchcallback").then(session => {
 			req.session.twitchtoken = session.access_token;
 			getTwitchUserId(session.access_token).then(id => {
 				createAccountWith("twitch_id", id).then(userid => {
@@ -361,7 +352,7 @@ app.get("/twitchcallback/add", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToTwitch(code, twitchredirect + "/add").then(session => {
+			loginToTwitch(code, url + "twitchcallback/add").then(session => {
 				req.session.twitchtoken = session.access_token;
 				getTwitchUserId(session.access_token).then(id => {
 					addToAccount("twitch_id", req.session.userid, id).then(() => {
@@ -486,9 +477,7 @@ function twitter(method, oauth) {
 			req.session.twitterOauthRequestToken = oauthRequestToken;
 			req.session.twitterOauthRequestTokenSecret = oauthRequestTokenSecret;
 
-			const authorizationUrl = `https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`;
-			console.log("redirecting user to ", authorizationUrl);
-			res.redirect(authorizationUrl);
+			res.redirect(`https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`);
 		}).catch(err => {
 			error(res, 500, "Twitter Error.");
 		});
@@ -534,7 +523,10 @@ function twitterCallback(req, res, oauth) {
 			req.session.oauthAccessTokenSecret = oauthAccessTokenSecret;
 			req.session.oauthAccessToken = oauthAccessToken;
 			resolve(results);
-		}).catch(err => error(res));
+		}).catch(err => {
+			console.error(err);
+			error(res);
+		});
 	});
 }
 app.get('/twittercallback', async (req, res) => {
@@ -796,7 +788,7 @@ function getProfile(dbdata, userdata) {
 								let finalObject = {};
 								finalObject[sort] = {
 									name: "try again later",
-									picture: "https://movr.eu-gb.mybluemix.net/favicon.png"
+									picture: url + "favicon.png"
 								};
 								resolve(finalObject);
 							});
@@ -886,10 +878,7 @@ app.get('/:from/:name', (req, res) => {
 					name: req.params.name,
 					sessionuserid: req.session.userid,
 					discordid: discordcreds.id,
-					discordredirectadd,
 					ghid: ghcreds.id,
-					githubredirect,
-					twitchredirect,
 					twitchid: twitchcreds.id,
 					ids: data.dbdata || {},
 					precachedaccount: result,
@@ -901,7 +890,7 @@ app.get('/:from/:name', (req, res) => {
 			error(res, 500, err);
 	});
 });
-app.get("*", (req, res) => error(res, 404, "Page Not Found!"));
+app.get("*", (_, res) => error(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
 process.on('exit', function () {
