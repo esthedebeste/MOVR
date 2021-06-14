@@ -52,9 +52,6 @@ app.use(session({
 	resave: false,
 	saveUninitialized: false,
 	sameSite: "lax",
-	cookie: {
-		secure: !testingenv
-	},
 	name: "movr-sid"
 }));
 
@@ -492,8 +489,9 @@ function getOAuthAccessTokenWith(
 	oauthVerifier, oauth) {
 	return new Promise((resolve, reject) => {
 		oauth.getOAuthAccessToken(oauthRequestToken, oauthRequestTokenSecret, oauthVerifier, function (error, oauthAccessToken, oauthAccessTokenSecret, results) {
-			return error ?
-				reject(error) :
+			if (error)
+				reject(error);
+			else
 				resolve({
 					oauthAccessToken,
 					oauthAccessTokenSecret,
@@ -510,19 +508,15 @@ function twitterCallback(req, res, oauth) {
 			twitterOauthRequestTokenSecret
 		} = req.session;
 		const {
-			oauth_verifier: oauthVerifier
+			oauth_verifier
 		} = req.query;
 		getOAuthAccessTokenWith(
 			twitterOauthRequestToken,
 			twitterOauthRequestTokenSecret,
-			oauthVerifier, oauth).then(result => {
+			oauth_verifier, oauth).then(result => {
 			const {
-				oauthAccessToken,
-				oauthAccessTokenSecret,
 				results
 			} = result;
-			req.session.oauthAccessTokenSecret = oauthAccessTokenSecret;
-			req.session.oauthAccessToken = oauthAccessToken;
 			resolve(results);
 		}).catch(err => {
 			console.error(err);
@@ -532,6 +526,8 @@ function twitterCallback(req, res, oauth) {
 }
 app.get('/twittercallback', async (req, res) => {
 	twitterCallback(req, res, loginOauth).then(user => {
+		console.log("Through callback");
+		console.log(user);
 		createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
 	});
 });
