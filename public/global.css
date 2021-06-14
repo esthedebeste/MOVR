@@ -39,6 +39,7 @@ body {
 #accountparent {
     display: flex;
     position: absolute;
+    flex: 1 1 0;
     top: 0vh;
     bottom: 100vh;
     height: 100vh;
@@ -55,7 +56,6 @@ body {
     justify-content: center;
     align-items: center;
     text-align: center;
-    width: 14rem;
     height: 4rem;
     font-size: 2rem;
     background-color: #fff;
@@ -74,6 +74,10 @@ body {
     padding: 1rem;
     border-radius: 2rem;
     margin-bottom: 2rem;
+}
+
+.overflows {
+    overflow: visible;
 }
 
 .logo {
