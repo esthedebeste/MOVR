@@ -1,6 +1,5 @@
 import {
     readFileSync
 } from "fs";
-export default file => {
-    return JSON.parse(readFileSync(file));
-};
+export default file => JSON.parse(readFileSync(new URL(file,
+    import.meta.url)));
