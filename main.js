@@ -1,19 +1,18 @@
-const ibmdb = require("ibm_db");
-const express = require('express');
-const axios = require("axios").default;
-const oauth = require("oauth");
+import json from "./jsonimport.js";
+import ibmdb from "ibm_db";
+import express from "express";
+import axios from "axios";
+import oauth from "oauth";
 const app = express();
 const port = process.env.PORT || 80;
-const ghcreds = require("./ghclientcreds.json");
-const discordcreds = require("./discordcreds.json");
-const twitchcreds = require("./twitchcreds.json");
-const twittercreds = require("./twittercreds.json");
-const steamcreds = require("./steamcreds.json");
-const {
-	escape
-} = require("sqlstring");
-const session = require("express-session");
-const crypto = require("crypto");
+import sqlstring from "sqlstring";
+import session from "express-session";
+import crypto from "crypto";
+const ghcreds = json("./ghclientcreds.json");
+const discordcreds = json("./discordcreds.json");
+const twitchcreds = json("./twitchcreds.json");
+const twittercreds = json("./twittercreds.json");
+const steamcreds = json("./steamcreds.json");
 
 let db2;
 let testingenv = false;
@@ -37,7 +36,7 @@ if (process.env.VCAP_SERVICES) {
 	githubredirect = "http://localhost/ghcallback";
 	twitchredirect = "http://localhost/twitchcallback";
 	url = "http://localhost/";
-	db2 = require("./db2creds.json");
+	db2 = json("db2creds.json");
 }
 
 let connString = `DRIVER={DB2};DATABASE=${db2.db};HOSTNAME=${db2.hostname};UID=${db2.username};PWD=${db2.password};PORT=${db2.port+1};PROTOCOL=TCPIP;Security=SSL;`;
@@ -98,7 +97,7 @@ app.post("/deleteaccount", (req, res) => {
 // #endregion
 //#region general
 function createAccountWith(type, id) {
-	id = escape(id, true);
+	id = sqlstring.escape(id, true);
 	return new Promise((resolve, reject) => {
 		// Existing check
 		db.query(`select id from movr_users where ${type}=${id} limit 1`).then(result => {
@@ -119,7 +118,7 @@ function createAccountWith(type, id) {
 }
 
 function addToAccount(type, movrid, id) {
-	id = escape(id, true);
+	id = sqlstring.escape(id, true);
 	return new Promise((resolve, reject) => {
 		db.query(`delete from movr_users where ${type}=${id}`).then(() => {
 			db.query(`update movr_users set ${type}=${id} where id=${movrid} limit 1`).then(result => {
@@ -136,7 +135,7 @@ function addToAccount(type, movrid, id) {
 }
 
 function getUser(type, id) {
-	id = escape(id, true);
+	id = sqlstring.escape(id, true);
 	return new Promise((resolve, reject) => {
 		db.query(`select * from movr_users where ${type}=${id} limit 1`).then(result => {
 			resolve(result[0]);
@@ -145,7 +144,7 @@ function getUser(type, id) {
 }
 
 function getAccount(gettype, getvalue, returntype) {
-	getvalue = escape(getvalue, true);
+	getvalue = sqlstring.escape(getvalue, true);
 	returntype = returntype.toUpperCase();
 	return new Promise((resolve, reject) => {
 		db.query(`select ${returntype} from movr_users where ${gettype}=${getvalue} limit 1`).then(result => {
@@ -599,7 +598,7 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 
 //#endregion
 //#region steam
-const SteamAuth = require("@tbhmens/steam-auth");
+import SteamAuth from "@tbhmens/steam-auth";
 let authlogin = new SteamAuth(url + "steamcallback", url);
 let authadd = new SteamAuth(url + "steamcallback/add", url);
 app.get("/steamauth/login", (req, res) => {
