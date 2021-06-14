@@ -1,7 +1,12 @@
 import json from "./jsonimport.js";
 import ibmdb from "ibm_db";
 import express from "express";
-import axios from "axios";
+import ax from "axios";
+const axios = ax.create({
+	headers: {
+		"User-Agent": "MOVR"
+	}
+});
 import oauth from "oauth";
 const app = express();
 const port = process.env.PORT || 80;
@@ -218,8 +223,7 @@ function getGithubUserId(token) {
 	return new Promise((resolve, reject) => {
 		axios.get("https://api.github.com/user", {
 			headers: {
-				Authorization: `Bearer ${token}`,
-				"User-Agent": "MOVR"
+				Authorization: `Bearer ${token}`
 			}
 		}).then(result => {
 			resolve(result.data.id);
@@ -420,11 +424,7 @@ let bearerKeyCache = null;
 function getBearerKey() {
 	return new Promise((resolve, reject) => {
 		if (bearerKeyCache == null || bearerKeyCache.timestamp < Date.now() + 5000)
-			axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`, {
-				headers: {
-					"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36"
-				}
-			}).then(creds =>
+			axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`).then(creds =>
 				resolve(bearerKeyCache = {
 					access_token: creds.data.access_token,
 					timestamp: creds.data.expires_in * 1000 + Date.now()
@@ -636,10 +636,7 @@ function getData(from, name) {
 		switch (from) {
 			case "github":
 				axios.get("https://api.github.com/users/" + name, {
-					auth: ghcreds.tokenauth,
-					headers: {
-						"User-Agent": "MOVR"
-					}
+					auth: ghcreds.tokenauth
 				}).then(userdata => {
 					userdata.data.name = userdata.data.name;
 					userdata.data.html_url = userdata.data.html_url;
@@ -781,10 +778,7 @@ function getProfile(dbdata, userdata) {
 					switch (sort) {
 						case "GITHUB_ID":
 							axios.get("https://api.github.com/user/" + id, {
-								auth: ghcreds.tokenauth,
-								headers: {
-									"User-Agent": "MOVR"
-								}
+								auth: ghcreds.tokenauth
 							}).then(result => {
 								let finalObject = {};
 								finalObject[sort] = {
