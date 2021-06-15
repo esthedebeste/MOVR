@@ -60,14 +60,14 @@
                             .catch(reject);
                         break;
                     case "DISCORD_ID":
-                        fetch("/getdiscordname/" + accountid).then(a => a.text()).then(
+                        fetch("/api/discord/getname?id=" + accountid).then(a => a.text()).then(
                                 username => resolve({
                                     name: username
                                 }))
                             .catch(reject);
                         break;
                     case "TWITCH_ID":
-                        fetch("/api/gettwitchname/" + accountid).then(a => a.text()).then(
+                        fetch("/api/twitch/getname?id=" + accountid).then(a => a.text()).then(
                                 username => resolve({
                                     name: username,
                                     html_url: "https://twitch.tv/" + username
@@ -75,7 +75,7 @@
                             .catch(reject);
                         break;
                     case "TWITTER_ID":
-                        fetch("/api/gettwittername/" + accountid).then(a => a.json()).then(data => {
+                        fetch("/api/twitter/getname?id=" + accountid).then(a => a.json()).then(data => {
                             console.log(ids, ids[accounttype], accountid)
                             data.html_url = "https://twitter.com/" + data.screen_name;
                             resolve(data)
@@ -83,7 +83,7 @@
                             reject);
                         break;
                     case "STEAM_ID":
-                        fetch("/api/getsteamname/" + accountid).then(a => a.json()).then(data => {
+                        fetch("/api/steam/getname?id=" + accountid).then(a => a.json()).then(data => {
                             data.name = data.personaname;
                             data.html_url = data.profileurl;
                             resolve(data)
@@ -126,20 +126,21 @@
                             switch (account) {
                                 case "GITHUB_ID":
                                     location =
-                                        "https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= ghid %>&redirect_uri=<%=url%>ghcallback/add";
+                                        "https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= ghid %>&redirect_uri=<%=url%>auth/github/add";
                                     break;
                                 case "DISCORD_ID":
                                     location =
-                                        `https://discord.com/api/oauth2/authorize?client_id=<%= discordid %>&redirect_uri=<%= url %>discordcallbackadd&response_type=code&scope=identify&prompt=consent`;
+                                        `https://discord.com/api/oauth2/authorize?client_id=<%= discordid %>&redirect_uri=<%= url %>auth/discord/add&response_type=code&scope=identify&prompt=consent`;
                                                                                 `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=<%=twitchid%>&redirect_uri=<%=url%>twitchcallback/add&scope=user:read:email`;
                                     break;
+                                case "TWITCH_ID":
+                                    location = `/redirect/twitch/add`;
+                                    break;
                                 case "TWITTER_ID":
-                                    location =
-                                        `/twitterauth/add`;
+                                    location = `/redirect/twitter/add`;
                                     break;
                                 case "STEAM_ID":
-                                    location =
-                                        `/steamauth/add`;
+                                    location = `/redirect/steam/add`;
                                     break;
                                 default:
                                     break;
