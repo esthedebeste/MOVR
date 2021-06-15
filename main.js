@@ -1,18 +1,23 @@
 import json from "./jsonimport.js";
 import ibmdb from "ibm_db";
-import express from "express";
 import ax from "axios";
+import oauth from "oauth";
+import sqlstring from "sqlstring";
+import session from "express-session";
+import crypto from "crypto";
+import {
+	App
+} from "@tinyhttp/app";
+import sirv from "sirv";
+import ejs from "ejs";
+import SteamAuth from "@tbhmens/steam-auth";
 const axios = ax.create({
 	headers: {
 		"User-Agent": "MOVR"
 	}
 });
-import oauth from "oauth";
-const app = express();
+const app = new App();
 const port = process.env.PORT || 80;
-import sqlstring from "sqlstring";
-import session from "express-session";
-import crypto from "crypto";
 const ghcreds = json("config/ghclientcreds.json");
 const discordcreds = json("config/discordcreds.json");
 const twitchcreds = json("config/twitchcreds.json");
@@ -44,9 +49,9 @@ let db = ibmdb.openSync(connString);
 console.log("Connected!");
 
 
-app.set('view engine', 'ejs');
-app.set('views', 'views');
-app.use(express.static("public"));
+app.engine("ejs", ejs.renderFile);
+app.set("ext", "ejs");
+app.use(sirv("public"));
 app.use(session({
 	secret: crypto.randomBytes(64).toString("utf16le"),
 	resave: false,
@@ -56,14 +61,14 @@ app.use(session({
 }));
 
 function error(res, code = 500, errtext = "Internal Error.") {
-	res.status(code).render('error', {
+	res.status(code).render("error.ejs", {
 		error: errtext
 	});
 }
 
 
 app.get('/', (req, res) => {
-	res.render('index', {
+	res.render("index.ejs", {
 		ghid: ghcreds.id,
 		discordid: discordcreds.id,
 		twitchid: twitchcreds.id,
@@ -587,7 +592,6 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 
 //#endregion
 //#region steam
-import SteamAuth from "@tbhmens/steam-auth";
 let authlogin = new SteamAuth(url + "steamcallback", url);
 let authadd = new SteamAuth(url + "steamcallback/add", url);
 app.get("/steamauth/login", (req, res) => {
@@ -872,7 +876,7 @@ app.get('/:from/:name', (req, res) => {
 			error(res, 404, "This account type isn't supported.");
 		else
 			getProfile(data.dbdata, data.userdata).then(result => {
-				res.render('person', {
+				res.render("person.ejs", {
 					from: req.params.from,
 					name: req.params.name,
 					sessionuserid: req.session.userid,
