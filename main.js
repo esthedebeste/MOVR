@@ -72,16 +72,16 @@ app.get("/api/getaccount/:id", (req, res) => {
 		database.getUser("ID", id).then(user => res.send(user)).catch(e => console.error(e));
 });
 
-app.post("/deleteaccount", (req, res) => {
+app.post("/api/deleteaccount", (req, res) => {
 	if (!isNaN(req.session.userid))
 		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
 });
 // #endregion
 //#region github
-app.get("/ghcallback", async (req, res) => {
+app.get("/auth/github/login", async (req, res) => {
 	let code = req.query.code;
 	if (code)
-		loginToGithub(code, githubredirect).then(session => {
+		loginToGithub(code, url + "auth/github/login").then(session => {
 			req.session.ghtoken = session.access_token;
 			getGithubUserId(session.access_token).then(id => {
 				database.createAccountWith("github_id", id).then(userid => {
@@ -100,11 +100,11 @@ app.get("/ghcallback", async (req, res) => {
 	else
 		res.redirect("/");
 });
-app.get("/ghcallback/add", async (req, res) => {
+app.get("/auth/github/add", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToGithub(code, githubredirect + "/add").then(session => {
+			loginToGithub(code, url + "auth/github/add").then(session => {
 				req.session.githubtoken = session.access_token;
 				getGithubUserId(session.access_token).then(id => {
 					database.addToAccount("github_id", req.session.userid, id).then(() => {
@@ -161,10 +161,10 @@ function getGithubUserId(token) {
 
 //#endregion
 //#region discord
-app.get("/discordcallback", async (req, res) => {
+app.get("/auth/discord/login", async (req, res) => {
 	let code = req.query.code;
 	if (code)
-		loginToDiscord(code, url + "discordcallback").then(session => {
+		loginToDiscord(code, url + "auth/discord/login").then(session => {
 			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
 				database.createAccountWith("discord_id", id).then(userid => {
@@ -214,11 +214,11 @@ function getDiscordUserId(token) {
 	});
 }
 
-app.get("/discordcallbackadd", (req, res) => {
+app.get("/auth/discord/add", (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToDiscord(code, url + "discordcallbackadd").then(session => {
+			loginToDiscord(code, url + "auth/discord/add").then(session => {
 				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
 					database.addToAccount("discord_id", req.session.userid, id).then(userid => {
@@ -241,7 +241,7 @@ app.get("/discordcallbackadd", (req, res) => {
 		error(res, 400, "Discord Callback Broken!");
 });
 
-app.get("/getdiscordname/:discordid", (req, res) => {
+app.get("/api/getdiscordname/:discordid", (req, res) => {
 	if (!isNaN(req.params.discordid)) {
 		axios.get(`https://discord.com/api/v8/users/${req.params.discordid}`, {
 			headers: {
@@ -259,10 +259,20 @@ app.get("/getdiscordname/:discordid", (req, res) => {
 
 //#endregion
 //#region twitch
-app.get("/twitchcallback", async (req, res) => {
+app.get("/redirect/twitch/login", async (req, res) => {
+	req.session.twitchstate = crypto.randomBytes(24).toString("base64url");
+	res.redirect(`https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${twitchcreds.id}&redirect_uri=${url}auth/twitch/login&scope=user:read:email&force_verify=true&state=${req.session.twitchstate}`);
+});
+app.get("/redirect/twitch/add", async (req, res) => {
+	req.session.twitchstate = crypto.randomBytes(24).toString("base64url");
+	res.redirect(`https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${twitchcreds.id}&redirect_uri=${url}auth/twitch/add&scope=user:read:email&force_verify=true&state=${req.session.twitchstate}`);
+});
+app.get("/auth/twitch/login", async (req, res) => {
 	let code = req.query.code;
-	if (code)
-		loginToTwitch(code, url + "twitchcallback").then(session => {
+	if (typeof req.query.state === "undefined" || req.query.state !== req.session.twitchstate)
+		error(res, 400, "Authentication Error.");
+	else if (code)
+		loginToTwitch(code, url + "auth/twitch/login").then(session => {
 			req.session.twitchtoken = session.access_token;
 			getTwitchUserId(session.access_token).then(id => {
 				database.createAccountWith("twitch_id", id).then(userid => {
@@ -281,11 +291,11 @@ app.get("/twitchcallback", async (req, res) => {
 	else
 		error(res, 400, "Twitch Callback Broken.");
 });
-app.get("/twitchcallback/add", async (req, res) => {
+app.get("/auth/twitch/add", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToTwitch(code, url + "twitchcallback/add").then(session => {
+			loginToTwitch(code, url + "auth/twitch/add").then(session => {
 				req.session.twitchtoken = session.access_token;
 				getTwitchUserId(session.access_token).then(id => {
 					database.addToAccount("twitch_id", req.session.userid, id).then(() => {
@@ -387,14 +397,14 @@ const loginOauth = new oauth.OAuth(
 	"https://twitter.com/oauth/request_token", "https://twitter.com/oauth/access_token",
 	twittercreds.apikey,
 	twittercreds.apisecret,
-	"1.0A", url + "twittercallback", "HMAC-SHA1");
+	"1.0A", url + "auth/twitter/login", "HMAC-SHA1");
 const addOauth = new oauth.OAuth(
 	"https://twitter.com/oauth/request_token", "https://twitter.com/oauth/access_token",
 	twittercreds.apikey,
 	twittercreds.apisecret,
-	"1.0A", url + "twittercallback/add", "HMAC-SHA1");
-app.get("/twitterauth/login", twitter("authenticate", loginOauth));
-app.get("/twitterauth/add", twitter("authorize", addOauth));
+	"1.0A", url + "auth/twitter/add", "HMAC-SHA1");
+app.get("/redirect/twitter/login", twitter("authenticate", loginOauth));
+app.get("/redirect/twitter/add", twitter("authorize", addOauth));
 
 function twitter(method, oauth) {
 	return async (req, res) => {
@@ -455,14 +465,14 @@ function twitterCallback(req, res, oauth) {
 		});
 	});
 }
-app.get('/twittercallback', async (req, res) => {
+app.get('/auth/twitter/login', async (req, res) => {
 	twitterCallback(req, res, loginOauth).then(user => {
 		console.log("Through callback");
 		console.log(user);
 		database.createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
 	});
 });
-app.get('/twittercallback/add', async (req, res) => {
+app.get('/auth/twitter/add', async (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		twitterCallback(req, res, addOauth).then(user => {
 			database.addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
@@ -520,13 +530,13 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 //#region steam
 let authlogin = new SteamAuth(url + "steamcallback", url);
 let authadd = new SteamAuth(url + "steamcallback/add", url);
-app.get("/steamauth/login", (req, res) => {
+app.get("/redirect/steam/login", (req, res) => {
 	authlogin.getAuthUrl().then(url => res.redirect(url)).catch(() => error(res, 500, "Steam Error."));
 });
-app.get("/steamauth/add", (req, res) => {
+app.get("/redirect/steam/add", (req, res) => {
 	authadd.getAuthUrl().then(url => res.redirect(url)).catch(() => error(res, 500, "Steam Error."));
 });
-app.get("/steamcallback", (req, res) => {
+app.get("/auth/steam/login", (req, res) => {
 	authlogin.verify(req).then(steamId => {
 		database.createAccountWith("steam_id", steamId).then(userid => {
 			req.session.userid = userid;
@@ -541,7 +551,7 @@ app.get("/steamcallback", (req, res) => {
 		error(res, 400, "Steam Authentication Error.");
 	});
 });
-app.get("/steamcallback/add", (req, res) => {
+app.get("/auth/steam/add", (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		authadd.verify(req).then(steamId => {
 			database.addToAccount("steam_id", req.session.userid, steamId).then(id => {
