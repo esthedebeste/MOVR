@@ -4,6 +4,10 @@ Movr is an accountless way to connect accounts. That means: no password to remem
 
 ## Instructions
 
+### Environment Variables
+
+- LOCALTESTINGENVIRONMENT: set this to T to set the url to http\://localhost/ and make db2 use config/db2creds.json
+
 ### The "config" folder
 
 This folder contains a couple of json files needed to authenticate with third-party APIs.
@@ -14,6 +18,9 @@ Information for MOVR to use. Contains one value:
 - db2creds.json:  
 MOVR runs on IBM Cloud, and these credentials are credentials used to log into the Db2 on Cloud service.  
 This file is for intended testing environments, in practice you'll want to connect the service to your cloud foundry application.
+- db2config.json:  
+    **Not to be confused with db2creds.json**, contains one value:
+    - tablename: The name of the table used to store movr data
 - discordcreds.json  
 Acquired from https://discord.com/developers/applications, contains three values:  
     - id: Your discord client ID,
