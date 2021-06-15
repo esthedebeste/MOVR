@@ -1,8 +1,6 @@
 import json from "./jsonimport.js";
-import ibmdb from "ibm_db";
 import ax from "axios";
 import oauth from "oauth";
-import sqlstring from "sqlstring";
 import session from "express-session";
 import crypto from "crypto";
 import {
@@ -11,6 +9,7 @@ import {
 import sirv from "sirv";
 import ejs from "ejs";
 import SteamAuth from "@tbhmens/steam-auth";
+import Database from "./db2.js";
 const axios = ax.create({
 	headers: {
 		"User-Agent": "MOVR"
@@ -25,29 +24,14 @@ const twittercreds = json("config/twittercreds.json");
 const steamcreds = json("config/steamcreds.json");
 const movrconfig = json("config/movrconfig.json");
 
-let db2;
-let testingenv = false;
+let testingenv = process.env.LOCALTESTINGENVIRONMENT === "T";
 // Format to a valid URL which ends with a /
 let url = new URL(movrconfig.url).toString();
-if (process.env.VCAP_SERVICES) {
-	let env = JSON.parse(process.env.VCAP_SERVICES);
-	if (env.dashDB)
-		db2 = env.dashDB[0].credentials;
-	else if (env["dashDB For Transactions"])
-		db2 = env["dashDB For Transactions"][0].credentials;
-	else
-		console.log(env);
-} else {
-	testingenv = true;
+if (testingenv)
 	url = "http://localhost/";
-	db2 = json("config/db2creds.json");
-}
 
-let connString = `DRIVER={DB2};DATABASE=${db2.db};HOSTNAME=${db2.hostname};UID=${db2.username};PWD=${db2.password};PORT=${db2.port+1};PROTOCOL=TCPIP;Security=SSL;`;
-console.log(`Connecting to database with hostname ${db2.hostname}...`);
-let db = ibmdb.openSync(connString);
-console.log("Connected!");
-
+const db2config = json("config/db2config.json");
+let database = new Database(db2config.tablename, testingenv);
 
 app.engine("ejs", ejs.renderFile);
 app.set("ext", "ejs");
@@ -80,12 +64,12 @@ app.get('/', (req, res) => {
 app.get("/api/getaccount/gh/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
-		getAccount("github_id", id, "ID").then(result => res.send(result)).catch(e => console.error(e));
+		database.getAccount("github_id", id, "ID").then(result => res.send(result)).catch(e => console.error(e));
 });
 app.get("/api/getaccount/:id", (req, res) => {
 	let id = req.params.id;
 	if (!isNaN(id))
-		getUser("ID", id).then(user => res.send(user)).catch(e => console.error(e));
+		database.getUser("ID", id).then(user => res.send(user)).catch(e => console.error(e));
 });
 
 app.post("/deleteaccount", (req, res) => {
@@ -93,64 +77,6 @@ app.post("/deleteaccount", (req, res) => {
 		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
 });
 // #endregion
-//#region general
-function createAccountWith(type, id) {
-	id = sqlstring.escape(id, true);
-	return new Promise((resolve, reject) => {
-		// Existing check
-		db.query(`select id from movr_users where ${type}=${id} limit 1`).then(result => {
-			if (result.length > 0)
-				return resolve(result[0].ID);
-			// Create account
-			db.query(`insert into movr_users (${type}) values (${id})`).then(result => {
-				// Get account id
-				db.query(`select id from movr_users where ${type}=${id} limit 1`).then(id => {
-					resolve(id[0].ID);
-				}).catch(e => console.error(e));
-			}).catch(e => console.error(e));
-		}).catch(err => {
-			console.error(err);
-			res.redirect("/");
-		});
-	});
-}
-
-function addToAccount(type, movrid, id) {
-	id = sqlstring.escape(id, true);
-	return new Promise((resolve, reject) => {
-		db.query(`delete from movr_users where ${type}=${id}`).then(() => {
-			db.query(`update movr_users set ${type}=${id} where id=${movrid} limit 1`).then(result => {
-				resolve(result);
-			}).catch(e => {
-				console.error(e);
-				reject(e);
-			});
-		}).catch(e => {
-			console.error(e);
-			reject(e);
-		});
-	});
-}
-
-function getUser(type, id) {
-	id = sqlstring.escape(id, true);
-	return new Promise((resolve, reject) => {
-		db.query(`select * from movr_users where ${type}=${id} limit 1`).then(result => {
-			resolve(result[0]);
-		}).catch(e => reject(e));
-	});
-}
-
-function getAccount(gettype, getvalue, returntype) {
-	getvalue = sqlstring.escape(getvalue, true);
-	returntype = returntype.toUpperCase();
-	return new Promise((resolve, reject) => {
-		db.query(`select ${returntype} from movr_users where ${gettype}=${getvalue} limit 1`).then(result => {
-			resolve(result[0][returntype]);
-		}).catch(e => reject(e));
-	});
-}
-//#endregion
 //#region github
 app.get("/ghcallback", async (req, res) => {
 	let code = req.query.code;
@@ -158,7 +84,7 @@ app.get("/ghcallback", async (req, res) => {
 		loginToGithub(code, githubredirect).then(session => {
 			req.session.ghtoken = session.access_token;
 			getGithubUserId(session.access_token).then(id => {
-				createAccountWith("github_id", id).then(userid => {
+				database.createAccountWith("github_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -181,7 +107,7 @@ app.get("/ghcallback/add", async (req, res) => {
 			loginToGithub(code, githubredirect + "/add").then(session => {
 				req.session.githubtoken = session.access_token;
 				getGithubUserId(session.access_token).then(id => {
-					addToAccount("github_id", req.session.userid, id).then(() => {
+					database.addToAccount("github_id", req.session.userid, id).then(() => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(err => {
 						console.error(err.toString());
@@ -241,7 +167,7 @@ app.get("/discordcallback", async (req, res) => {
 		loginToDiscord(code, url + "discordcallback").then(session => {
 			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
-				createAccountWith("discord_id", id).then(userid => {
+				database.createAccountWith("discord_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -295,7 +221,7 @@ app.get("/discordcallbackadd", (req, res) => {
 			loginToDiscord(code, url + "discordcallbackadd").then(session => {
 				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
-					addToAccount("discord_id", req.session.userid, id).then(userid => {
+					database.addToAccount("discord_id", req.session.userid, id).then(userid => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(err => {
 						console.error(err.toString());
@@ -339,7 +265,7 @@ app.get("/twitchcallback", async (req, res) => {
 		loginToTwitch(code, url + "twitchcallback").then(session => {
 			req.session.twitchtoken = session.access_token;
 			getTwitchUserId(session.access_token).then(id => {
-				createAccountWith("twitch_id", id).then(userid => {
+				database.createAccountWith("twitch_id", id).then(userid => {
 					req.session.userid = userid;
 					console.log(userid + " logged in!");
 					res.redirect("/id/" + userid);
@@ -362,7 +288,7 @@ app.get("/twitchcallback/add", async (req, res) => {
 			loginToTwitch(code, url + "twitchcallback/add").then(session => {
 				req.session.twitchtoken = session.access_token;
 				getTwitchUserId(session.access_token).then(id => {
-					addToAccount("twitch_id", req.session.userid, id).then(() => {
+					database.addToAccount("twitch_id", req.session.userid, id).then(() => {
 						res.redirect("/id/" + req.session.userid);
 					}).catch(err => {
 						console.error(err.toString());
@@ -414,7 +340,7 @@ app.get("/api/getaccount/twitch/name/:name", (req, res) => {
 					"Client-Id": twitchcreds.id
 				}
 			}).then(result => {
-				getAccount("TWITCH_ID", result.data.data[0].id, "id").then(result => {
+				database.getAccount("TWITCH_ID", result.data.data[0].id, "id").then(result => {
 					res.status(200).send(result.toString());
 				});
 			});
@@ -533,13 +459,13 @@ app.get('/twittercallback', async (req, res) => {
 	twitterCallback(req, res, loginOauth).then(user => {
 		console.log("Through callback");
 		console.log(user);
-		createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
+		database.createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
 	});
 });
 app.get('/twittercallback/add', async (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		twitterCallback(req, res, addOauth).then(user => {
-			addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
+			database.addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
 				res.redirect("/twitter/" + user.screen_name);
 			});
 		});
@@ -580,7 +506,7 @@ app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
 				authorization: `Bearer ${twittercreds.bearertoken}`
 			}
 		}).then(data => {
-			getAccount("twitter_id", data.data.id_str, "ID").then(result => res.send(result.toString())).catch(e => {
+			database.getAccount("twitter_id", data.data.id_str, "ID").then(result => res.send(result.toString())).catch(e => {
 				console.error(e);
 				error(res, 500, "Database Error");
 			});
@@ -602,7 +528,7 @@ app.get("/steamauth/add", (req, res) => {
 });
 app.get("/steamcallback", (req, res) => {
 	authlogin.verify(req).then(steamId => {
-		createAccountWith("steam_id", steamId).then(userid => {
+		database.createAccountWith("steam_id", steamId).then(userid => {
 			req.session.userid = userid;
 			console.log(userid + " logged in!");
 			res.redirect("/id/" + userid);
@@ -618,7 +544,7 @@ app.get("/steamcallback", (req, res) => {
 app.get("/steamcallback/add", (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		authadd.verify(req).then(steamId => {
-			addToAccount("steam_id", req.session.userid, steamId).then(id => {
+			database.addToAccount("steam_id", req.session.userid, steamId).then(id => {
 				res.redirect("/id/" + req.session.userid);
 			});
 		}).catch(err => {
@@ -641,7 +567,7 @@ function getData(from, name) {
 					userdata.data.name = userdata.data.name;
 					userdata.data.html_url = userdata.data.html_url;
 					userdata.data.picture = userdata.data.avatar_url;
-					getUser("github_id", userdata.data.id).then(result => resolve({
+					database.getUser("github_id", userdata.data.id).then(result => resolve({
 						dbdata: result,
 						userdata: {
 							"GITHUB_ID": userdata.data
@@ -656,7 +582,7 @@ function getData(from, name) {
 				if (isNaN(name))
 					reject("Invalid ID.");
 				else
-					getUser("GITHUB_ID", name).then(user => {
+					database.getUser("GITHUB_ID", name).then(user => {
 						if (typeof user === "undefined")
 							reject("This person doesn't have a movr account!");
 						else
@@ -676,7 +602,7 @@ function getData(from, name) {
 						result.data.data[0].name = result.data.data[0].display_name;
 						result.data.data[0].html_url = "https://twitch.tv/" + result.data.data[0].login;
 						result.data.data[0].picture = result.data.data[0].profile_image_url;
-						getUser("TWITCH_ID", result.data.data[0].id).then(user => {
+						database.getUser("TWITCH_ID", result.data.data[0].id).then(user => {
 							if (typeof user === "undefined")
 								reject("This person doesn't have a movr account!");
 							else
@@ -703,7 +629,7 @@ function getData(from, name) {
 					data.data.html_url = "https://twitter.com/" + data.data.screen_name;
 					data.data.picture = data.data.profile_image_url_https.replace("_normal", "");
 					data.data.entities = {};
-					getUser("TWITTER_ID", data.data.id_str).then(result => resolve({
+					database.getUser("TWITTER_ID", data.data.id_str).then(result => resolve({
 						dbdata: result,
 						userdata: {
 							"TWITTER_ID": data.data
@@ -719,7 +645,7 @@ function getData(from, name) {
 					if (data.data.response.success === 1) {
 						axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${data.data.response.steamid}`)
 							.then(result => {
-								getUser("STEAM_ID", result.data.response.players[0].steamid).then(user => {
+								database.getUser("STEAM_ID", result.data.response.players[0].steamid).then(user => {
 									if (typeof user === "undefined")
 										reject("This person doesn't have a movr account!");
 									else {
@@ -749,7 +675,7 @@ function getData(from, name) {
 				if (isNaN(name))
 					reject("Invalid ID.");
 				else
-					getUser("ID", name).then(user => {
+					database.getUser("ID", name).then(user => {
 						if (typeof user === "undefined")
 							reject("This person doesn't have a movr account!");
 						else
