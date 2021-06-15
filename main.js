@@ -340,22 +340,6 @@ function getTwitchUserId(token) {
 	});
 }
 
-app.get("/api/twitch/getaccountbyname", (req, res) => {
-	if (typeof (req.query.name) != "undefined")
-		getBearerKey().then(creds => {
-			axios.get(`https://api.twitch.tv/helix/users?login=${req.query.name}`, {
-				headers: {
-					Authorization: `Bearer ${creds.access_token}`,
-					"Client-Id": twitchcreds.id
-				}
-			}).then(result => {
-				database.getAccount("TWITCH_ID", result.data.data[0].id, "id").then(result => {
-					res.status(200).send(result.toString());
-				});
-			});
-		});
-});
-
 let bearerKeyCache = null;
 
 function getBearerKey() {
@@ -506,21 +490,6 @@ app.get("/api/twitter/getname", (req, res) => {
 			res.send(data.data);
 		}).catch(() => {
 			error(res, 500, "Twitter Error.");
-		});
-	} else
-		error(res, 400, "Invalid Params.");
-});
-app.get("/api/twitter/getaccountbyname", (req, res) => {
-	if (typeof req.query.name !== "undefined") {
-		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.query.name}&include_entities=false`, {
-			headers: {
-				authorization: `Bearer ${twittercreds.bearertoken}`
-			}
-		}).then(data => {
-			database.getAccount("twitter_id", data.data.id_str, "ID").then(result => res.send(result.toString())).catch(e => {
-				console.error(e);
-				error(res, 500, "Database Error");
-			});
 		});
 	} else
 		error(res, 400, "Invalid Params.");
