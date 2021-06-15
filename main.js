@@ -61,22 +61,21 @@ app.get('/', (req, res) => {
 });
 
 //#region API: Get accounts
-app.get("/api/getaccount/gh/:id", (req, res) => {
+app.get("/api/getaccount/", (req, res) => {
 	let id = req.params.id;
-	if (!isNaN(id))
-		database.getAccount("github_id", id, "ID").then(result => res.send(result)).catch(e => console.error(e));
-});
-app.get("/api/getaccount/:id", (req, res) => {
-	let id = req.params.id;
-	if (!isNaN(id))
+	if (!isNaN(req.query.gh))
+		database.getAccount("github_id", req.query.gh, "ID").then(result => res.send(result)).catch(e => console.error(e));
+	else if (!isNaN(id))
 		database.getUser("ID", id).then(user => res.send(user)).catch(e => console.error(e));
+	else
+		error(res, 400, "Invalid Query.");
 });
 
 app.post("/api/deleteaccount", (req, res) => {
 	if (!isNaN(req.session.userid))
 		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
 });
-// #endregion
+//#endregion
 //#region github
 app.get("/auth/github/login", async (req, res) => {
 	let code = req.query.code;
@@ -241,9 +240,9 @@ app.get("/auth/discord/add", (req, res) => {
 		error(res, 400, "Discord Callback Broken!");
 });
 
-app.get("/api/getdiscordname/:discordid", (req, res) => {
-	if (!isNaN(req.params.discordid)) {
-		axios.get(`https://discord.com/api/v8/users/${req.params.discordid}`, {
+app.get("/api/discord/getname", (req, res) => {
+	if (!isNaN(req.query.id)) {
+		axios.get(`https://discord.com/api/v8/users/${req.query.id}`, {
 			headers: {
 				Authorization: `Bot ${discordcreds.bot}`
 			}
@@ -341,10 +340,10 @@ function getTwitchUserId(token) {
 	});
 }
 
-app.get("/api/getaccount/twitch/name/:name", (req, res) => {
-	if (typeof (req.params.name) != "undefined")
+app.get("/api/twitch/getaccountbyname", (req, res) => {
+	if (typeof (req.query.name) != "undefined")
 		getBearerKey().then(creds => {
-			axios.get(`https://api.twitch.tv/helix/users?login=${req.params.name}`, {
+			axios.get(`https://api.twitch.tv/helix/users?login=${req.query.name}`, {
 				headers: {
 					Authorization: `Bearer ${creds.access_token}`,
 					"Client-Id": twitchcreds.id
@@ -376,10 +375,10 @@ function getBearerKey() {
 	});
 }
 
-app.get("/api/gettwitchname/:name", (req, res) => {
-	if (typeof (req.params.name) != "undefined")
+app.get("/api/twitch/getname", (req, res) => {
+	if (typeof (req.query.id) !== "undefined")
 		getBearerKey().then(creds => {
-			axios.get(`https://api.twitch.tv/helix/users?id=${req.params.name}`, {
+			axios.get(`https://api.twitch.tv/helix/users?id=${req.query.id}`, {
 				headers: {
 					Authorization: `Bearer ${creds.access_token}`,
 					"Client-Id": twitchcreds.id
@@ -390,6 +389,8 @@ app.get("/api/gettwitchname/:name", (req, res) => {
 		}).catch(err => {
 			error(res, 500, "Internal Twitch Error.");
 		});
+	else
+		error(res, 400);
 });
 //#endregion
 //#region twitter
@@ -495,9 +496,9 @@ function getOAuthRequestToken(oauth) {
 	});
 }
 
-app.get("/api/gettwittername/:userId", (req, res) => {
-	if (!isNaN(req.params.userId)) {
-		axios.get(`https://api.twitter.com/1.1/users/show.json?user_id=${req.params.userId}&include_entities=false`, {
+app.get("/api/twitter/getname", (req, res) => {
+	if (!isNaN(req.query.id)) {
+		axios.get(`https://api.twitter.com/1.1/users/show.json?user_id=${req.query.id}&include_entities=false`, {
 			headers: {
 				authorization: `Bearer ${twittercreds.bearertoken}`
 			}
@@ -509,9 +510,9 @@ app.get("/api/gettwittername/:userId", (req, res) => {
 	} else
 		error(res, 400, "Invalid Params.");
 });
-app.get("/api/getaccount/twitter/name/:screenName", (req, res) => {
-	if (typeof req.params.screenName !== "undefined") {
-		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.params.screenName}&include_entities=false`, {
+app.get("/api/twitter/getaccountbyname", (req, res) => {
+	if (typeof req.query.name !== "undefined") {
+		axios.get(`https://api.twitter.com/1.1/users/show.json?screen_name=${req.query.name}&include_entities=false`, {
 			headers: {
 				authorization: `Bearer ${twittercreds.bearertoken}`
 			}
@@ -561,9 +562,9 @@ app.get("/auth/steam/add", (req, res) => {
 			error(res, 400, "Steam Authentication Error.");
 		});
 });
-app.get("/api/getsteamname/:steamid", (req, res) => {
-	if (!isNaN(req.params.steamid))
-		axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.params.steamid}`).then(result => res.send(result.data.response.players[0])).catch(err => console.error(err));
+app.get("/api/steam/getname", (req, res) => {
+	if (!isNaN(req.query.id))
+		axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.query.id}`).then(result => res.send(result.data.response.players[0])).catch(err => console.error(err));
 });
 //#endregion
 //#region embed
