@@ -31,6 +31,9 @@ export default class Db2 {
         console.log(`Connecting to database with hostname ${creds.hostname}...`);
         this.db = openSync(connString);
         console.log("Connected!");
+        process.on('exit', function () {
+            this.db.closeSync();
+        });
     }
 
     /**
