@@ -40,10 +40,16 @@ app.use(session({
 	secret: crypto.randomBytes(64).toString("utf16le"),
 	resave: false,
 	saveUninitialized: false,
-	sameSite: "lax",
+	sameSite: "strict",
 	name: "movr-sid"
 }));
 
+/**
+ * Sends error.ejs to the client with the specified error text
+ * @param {Request} res 
+ * @param {number} code 
+ * @param {string} errtext 
+ */
 function error(res, code = 500, errtext = "Internal Error.") {
 	res.status(code).render("error.ejs", {
 		error: errtext
@@ -60,9 +66,10 @@ app.get('/', (req, res) => {
 	});
 });
 
-//#region API: Get accounts
+//#region Unused
+// Unused, but convenient for people that want to integrate movr
 app.get("/api/getaccount/", (req, res) => {
-	let id = req.params.id;
+	let id = req.query.id;
 	if (!isNaN(req.query.gh))
 		database.getAccount("github_id", req.query.gh, "ID").then(result => res.send(result)).catch(e => console.error(e));
 	else if (!isNaN(id))
@@ -71,6 +78,7 @@ app.get("/api/getaccount/", (req, res) => {
 		error(res, 400, "Invalid Query.");
 });
 
+// Unused, but as there isn't a delete account method yet this'll have to do.
 app.post("/api/deleteaccount", (req, res) => {
 	if (!isNaN(req.session.userid))
 		db.query(`delete from movr_users where id=${req.session.userid} limit 1`).catch(e => console.error(e));
@@ -80,7 +88,7 @@ app.post("/api/deleteaccount", (req, res) => {
 app.get("/auth/github/login", async (req, res) => {
 	let code = req.query.code;
 	if (code)
-		loginToGithub(code, url + "auth/github/login").then(session => {
+		loginToGithub(code).then(session => {
 			req.session.ghtoken = session.access_token;
 			getGithubUserId(session.access_token).then(id => {
 				database.createAccountWith("github_id", id).then(userid => {
@@ -103,7 +111,7 @@ app.get("/auth/github/add", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
-			loginToGithub(code, url + "auth/github/add").then(session => {
+			loginToGithub(code).then(session => {
 				req.session.githubtoken = session.access_token;
 				getGithubUserId(session.access_token).then(id => {
 					database.addToAccount("github_id", req.session.userid, id).then(() => {
@@ -125,27 +133,34 @@ app.get("/auth/github/add", async (req, res) => {
 		res.redirect("/");
 });
 
-function loginToGithub(session, redirect) {
+/**
+ * 
+ * @param {string} code - Code for authentication 
+ * @returns {Promise<string>} GitHub Access token
+ */
+function loginToGithub(code) {
 	return new Promise((resolve, reject) => {
 		axios.post("https://github.com/login/oauth/access_token", {
 			client_id: ghcreds.id,
 			client_secret: ghcreds.secret,
-			code: session,
-			accept: "json"
-		}).then(result => {
-			let a = result.data.split("&");
-			let b = {};
-			for (let i of a) {
-				let vals = i.split("=");
-				b[vals[0]] = vals[1];
+			code
+		}, {
+			headers: {
+				Accept: "application/json"
 			}
-			resolve(b);
+		}).then(result => {
+			resolve(result.data);
 		}).catch(a => {
 			reject(a);
 		});
 	});
 }
 
+/**
+ * https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+ * @param {string} token - GitHub access token
+ * @returns {Promise<object>} GitHub user profile
+ */
 function getGithubUserId(token) {
 	return new Promise((resolve, reject) => {
 		axios.get("https://api.github.com/user", {
@@ -186,9 +201,15 @@ app.get("/auth/discord/login", async (req, res) => {
 		error(res, "Discord Callback Broken.");
 });
 
-function loginToDiscord(session, redirect) {
+/**
+ * 
+ * @param {string} code - Code from the discord redirect 
+ * @param {string} redirect  - The discord redirect URI
+ * @returns {Promise<object>} A discord token
+ */
+function loginToDiscord(code, redirect) {
 	return new Promise((resolve, reject) => {
-		let data = `client_id=${discordcreds.id}&client_secret=${discordcreds.secret}&grant_type=authorization_code&code=${session}&redirect_uri=${redirect}&scope=identify`;
+		let data = `client_id=${discordcreds.id}&client_secret=${discordcreds.secret}&grant_type=authorization_code&code=${code}&redirect_uri=${redirect}&scope=identify`;
 		axios.post("https://discord.com/api/v8/oauth2/token", data, {
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded",
@@ -201,6 +222,11 @@ function loginToDiscord(session, redirect) {
 	});
 }
 
+/**
+ * Get the currently logged in user's id
+ * @param {string} token - Discord Bearer token (Not the bot token!) 
+ * @returns {Promise<number>} Discord ID
+ */
 function getDiscordUserId(token) {
 	return new Promise((resolve, reject) => {
 		axios.get("https://discord.com/api/users/@me", {
@@ -292,7 +318,9 @@ app.get("/auth/twitch/login", async (req, res) => {
 });
 app.get("/auth/twitch/add", async (req, res) => {
 	let code = req.query.code;
-	if (code)
+	if (typeof req.query.state === "undefined" || req.query.state !== req.session.twitchstate)
+		error(res, 400, "Authentication Error.");
+	else if (code)
 		if (typeof (req.session.userid) !== "undefined")
 			loginToTwitch(code, url + "auth/twitch/add").then(session => {
 				req.session.twitchtoken = session.access_token;
@@ -317,9 +345,15 @@ app.get("/auth/twitch/add", async (req, res) => {
 		error(res, 400, "Twitch Callback Broken.");
 });
 
-function loginToTwitch(session, redirect) {
+/**
+ * 
+ * @param {string} code - Twitch OAuth Code
+ * @param {string} redirect - Redirect URI
+ * @returns {Promise<{access_token: string, refresh_token: string, expires_in: number, scope: Array<string>, token_type: "bearer"}>}
+ */
+function loginToTwitch(code, redirect) {
 	return new Promise((resolve, reject) => {
-		axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&code=${session}&grant_type=authorization_code&redirect_uri=${redirect}`).then(result => {
+		axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&code=${code}&grant_type=authorization_code&redirect_uri=${redirect}`).then(result => {
 			resolve(result.data);
 		}).catch(a => {
 			reject(a);
@@ -327,6 +361,11 @@ function loginToTwitch(session, redirect) {
 	});
 }
 
+/**
+ * 
+ * @param {string} token - Twitch Access Token 
+ * @returns {Promise<number>} User ID 
+ */
 function getTwitchUserId(token) {
 	return new Promise((resolve, reject) => {
 		axios.get("https://api.twitch.tv/helix/users", {
@@ -342,6 +381,13 @@ function getTwitchUserId(token) {
 
 let bearerKeyCache = null;
 
+/**
+ * Gets an application bearer key using the cache
+ * @returns {Promise<{
+ * 	access_token: string,
+ *  timestamp: number // Code
+ * }>} 
+ */
 function getBearerKey() {
 	return new Promise((resolve, reject) => {
 		if (bearerKeyCache == null || bearerKeyCache.timestamp < Date.now() + 5000)
@@ -391,6 +437,12 @@ const addOauth = new oauth.OAuth(
 app.get("/redirect/twitter/login", twitter("authenticate", loginOauth));
 app.get("/redirect/twitter/add", twitter("authorize", addOauth));
 
+/**
+ * 
+ * @param {"authenticate" | "authorize"} method - Twitter authentication method
+ * @param {oauth.OAuth} oauth - oauth.Oauth instance to use 
+ * @returns {(req: Request, res: Response)=>void}
+ */
 function twitter(method, oauth) {
 	return async (req, res) => {
 		getOAuthRequestToken(oauth).then(result => {
@@ -408,7 +460,33 @@ function twitter(method, oauth) {
 	};
 }
 
+/**
+ * 
+ * @param {oauth.OAuth} oauth - OAuth instance
+ * @returns {Promise<{oauthRequestToken: string, oauthRequestTokenSecret: string, results: object}>} Request Token
+ */
+function getOAuthRequestToken(oauth) {
+	return new Promise((resolve, reject) => {
+		oauth.getOAuthRequestToken(function (error, oauthRequestToken, oauthRequestTokenSecret, results) {
+			if (error) reject(error);
+			else
+				resolve({
+					oauthRequestToken,
+					oauthRequestTokenSecret,
+					results
+				});
+		});
+	});
+}
 
+/**
+ * 
+ * @param {string} oauthRequestToken 
+ * @param {string} oauthRequestTokenSecret 
+ * @param {string} oauthVerifier 
+ * @param {oauth.Oauth} oauth 
+ * @returns {Promise<{oauthAccessToken: string, oauthAccessTokenSecret: string, results: {id: number, id_str: string,name: string, screen_name: string, location: string|null, url: string|null, description: string|null, protected: boolean, verified: boolean, followers_count: number, friends_count: number, listed_count: number, favourites_count: number, statuses_count: number, created_at: string, profile_banner_url: string, profile_image_url_https: string, default_profile: boolean, default_profile_image: boolean, withheld_in_countries: Array<string>, withheld_scope: "user"|undefined}}>}
+ */
 function getOAuthAccessTokenWith(
 	oauthRequestToken,
 	oauthRequestTokenSecret,
@@ -427,6 +505,13 @@ function getOAuthAccessTokenWith(
 	});
 }
 
+/**
+ * 
+ * @param {Request} req 
+ * @param {Response} res 
+ * @param {oauth.OAuth} oauth 
+ * @returns {Promise<{id: number, id_str: string,name: string, screen_name: string, location: string|null, url: string|null, description: string|null, protected: boolean, verified: boolean, followers_count: number, friends_count: number, listed_count: number, favourites_count: number, statuses_count: number, created_at: string, profile_banner_url: string, profile_image_url_https: string, default_profile: boolean, default_profile_image: boolean, withheld_in_countries: Array<string>, withheld_scope: "user"|undefined}>}
+ */
 function twitterCallback(req, res, oauth) {
 	return new Promise((resolve, reject) => {
 		const {
@@ -465,20 +550,6 @@ app.get('/auth/twitter/add', async (req, res) => {
 			});
 		});
 });
-
-function getOAuthRequestToken(oauth) {
-	return new Promise((resolve, reject) => {
-		oauth.getOAuthRequestToken(function (error, oauthRequestToken, oauthRequestTokenSecret, results) {
-			if (error) reject(error);
-			else
-				resolve({
-					oauthRequestToken,
-					oauthRequestTokenSecret,
-					results
-				});
-		});
-	});
-}
 
 app.get("/api/twitter/getname", (req, res) => {
 	if (!isNaN(req.query.id)) {
@@ -537,6 +608,12 @@ app.get("/api/steam/getname", (req, res) => {
 });
 //#endregion
 //#region embed
+/**
+ * 
+ * @param {string} from 
+ * @param {string} name 
+ * @returns {Promise<{dbdata: Object.<string, number>, userdata: Object.<string, {name: string, html_url: string, picture: string}>}>}
+ */
 function getData(from, name) {
 	return new Promise((resolve, reject) => {
 		switch (from) {
@@ -673,6 +750,12 @@ function getData(from, name) {
 
 let sortStyle = ["GITHUB_ID", "TWITTER_ID", "DISCORD_ID", "TWITCH_ID", "STEAM_ID"];
 
+/**
+ * 
+ * @param {Object.<string, number>} dbdata
+ * @param {Object.<string, {name: string, html_url: string, picture: string}>} userdata
+ * @returns {Object.<string, {name: string, html_url: string, picture: string}>}
+ */
 function getProfile(dbdata, userdata) {
 	return new Promise((resolve, reject) => {
 		if (typeof userdata !== "undefined")
@@ -802,6 +885,3 @@ app.get('/:from/:name', (req, res) => {
 app.get("*", (_, res) => error(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
-process.on('exit', function () {
-	db.closeSync();
-});
