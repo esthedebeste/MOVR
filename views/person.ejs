@@ -91,6 +91,14 @@
                         }).catch(
                             reject);
                         break;
+                    case "YOUTUBE_ID":
+                        fetch("/api/youtube/getname?id=" + accountid).then(a => a.json()).then(data => {
+                            data.name = data.snippet.title;
+                            data.html_url = "https://youtube.com/channel/"+data.id;
+                            resolve(data)
+                        }).catch(
+                            reject);
+                        break;
                 }
             });
         }

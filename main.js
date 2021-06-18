@@ -24,7 +24,7 @@ const discordcreds = json("config/discordcreds.json");
 const twitchcreds = json("config/twitchcreds.json");
 const twittercreds = json("config/twittercreds.json");
 const steamcreds = json("config/steamcreds.json");
-const googleconfig = json("config/googlecreds.json");
+const googlecreds = json("config/googlecreds.json");
 const movrconfig = json("config/movrconfig.json");
 
 let testingenv = process.env.LOCALTESTINGENVIRONMENT === "T";
@@ -556,8 +556,8 @@ app.get("/api/steam/getname", (req, res) => {
 });
 //#endregion
 //#region youtube
-const youtubeLogin = new YoutubeAuth(googleconfig.web.client_id, googleconfig.web.client_secret, url + "auth/youtube/login");
-const youtubeAdd = new YoutubeAuth(googleconfig.web.client_id, googleconfig.web.client_secret, url + "auth/youtube/add");
+const youtubeLogin = new YoutubeAuth(googlecreds.web.client_id, googlecreds.web.client_secret, url + "auth/youtube/login");
+const youtubeAdd = new YoutubeAuth(googlecreds.web.client_id, googlecreds.web.client_secret, url + "auth/youtube/add");
 app.get("/redirect/youtube/login", (req, res) => {
 	youtubeLogin.getAuthUrl("select_account", req.session).then(
 		url => res.redirect(url)
@@ -597,6 +597,11 @@ app.get("/auth/youtube/add", (req, res) => {
 		console.error(err);
 		error(res, 500, "YouTube Error");
 	});
+});
+
+app.get("/api/youtube/getname", (req, res) => {
+	if (typeof req.query.id !== "undefined")
+		axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${req.query.id}&key=${googlecreds.api_key}`).then(result => res.send(result.data.items[0])).catch(err => console.error(err));
 });
 //#endregion
 //#region embed
@@ -721,7 +726,7 @@ function getData(from, name) {
 				});
 				break;
 			case "youtube":
-				axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${name}&key=${googleconfig.api_key}`, {
+				axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${name}&key=${googlecreds.api_key}`, {
 					headers: {
 						Accept: "application/json"
 					}
@@ -733,7 +738,7 @@ function getData(from, name) {
 							return reject("This user doesn't have MOVR.");
 						let finalObject = result.data.items[0];
 						finalObject.name = finalObject.snippet.title;
-						finalObject.html_url = finalObject.id;
+						finalObject.html_url = "https://youtube.com/channel/" + finalObject.id;
 						finalObject.picture = finalObject.snippet.thumbnails.high.url;
 						resolve({
 							dbdata: user,
@@ -864,7 +869,7 @@ function getProfile(dbdata, userdata) {
 								.catch(err => reject("Steam Errror."));
 							break;
 						case "YOUTUBE_ID":
-							axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${id}&key=${googleconfig.api_key}`, {
+							axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${id}&key=${googlecreds.api_key}`, {
 								headers: {
 									Accept: "application/json"
 								}
