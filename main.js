@@ -90,7 +90,6 @@ app.get("/auth/github/login", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		loginToGithub(code).then(session => {
-			req.session.ghtoken = session.access_token;
 			getGithubUserId(session.access_token).then(id => {
 				database.createAccountWith("github_id", id).then(userid => {
 					req.session.userid = userid;
@@ -113,7 +112,6 @@ app.get("/auth/github/add", async (req, res) => {
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
 			loginToGithub(code).then(session => {
-				req.session.githubtoken = session.access_token;
 				getGithubUserId(session.access_token).then(id => {
 					database.addToAccount("github_id", req.session.userid, id).then(() => {
 						res.redirect("/id/" + req.session.userid);
@@ -180,7 +178,6 @@ app.get("/auth/discord/login", async (req, res) => {
 	let code = req.query.code;
 	if (code)
 		loginToDiscord(code, url + "auth/discord/login").then(session => {
-			req.session.discordtoken = session.access_token;
 			getDiscordUserId(session.access_token).then(id => {
 				database.createAccountWith("discord_id", id).then(userid => {
 					req.session.userid = userid;
@@ -245,7 +242,6 @@ app.get("/auth/discord/add", (req, res) => {
 	if (code)
 		if (typeof (req.session.userid) !== "undefined")
 			loginToDiscord(code, url + "auth/discord/add").then(session => {
-				req.session.discordtoken = session.access_token;
 				getDiscordUserId(session.access_token).then(id => {
 					database.addToAccount("discord_id", req.session.userid, id).then(userid => {
 						res.redirect("/id/" + req.session.userid);
@@ -485,14 +481,16 @@ function twitterCallback(req, res, oauth) {
 }
 app.get('/auth/twitter/login', async (req, res) => {
 	twitterCallback(req, res, loginOauth).then(user => {
-		console.log("Through callback");
-		console.log(user);
+		delete req.session.twitterOauthRequestToken;
+		delete twitterOauthRequestTokenSecret;
 		database.createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
 	});
 });
 app.get('/auth/twitter/add', async (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		twitterCallback(req, res, addOauth).then(user => {
+			delete req.session.twitterOauthRequestToken;
+			delete twitterOauthRequestTokenSecret;
 			database.addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
 				res.redirect("/twitter/" + user.screen_name);
 			});
