@@ -11,6 +11,7 @@ import ejs from "ejs";
 import SteamAuth from "@tbhmens/steam-auth";
 import Database from "./db2.js";
 import TwitchAuth from "@tbhmens/twitch-auth"
+import { YoutubeAuth } from "@tbhmens/google-auth"
 const axios = ax.create({
 	headers: {
 		"User-Agent": "MOVR"
@@ -23,6 +24,7 @@ const discordcreds = json("config/discordcreds.json");
 const twitchcreds = json("config/twitchcreds.json");
 const twittercreds = json("config/twittercreds.json");
 const steamcreds = json("config/steamcreds.json");
+const googleconfig = json("config/googlecreds.json");
 const movrconfig = json("config/movrconfig.json");
 
 let testingenv = process.env.LOCALTESTINGENVIRONMENT === "T";
@@ -515,8 +517,8 @@ app.get("/api/twitter/getname", (req, res) => {
 
 //#endregion
 //#region steam
-let authlogin = new SteamAuth(url + "steamcallback", url);
-let authadd = new SteamAuth(url + "steamcallback/add", url);
+let authlogin = new SteamAuth(url + "auth/steam/login", url);
+let authadd = new SteamAuth(url + "auth/steam/add", url);
 app.get("/redirect/steam/login", (req, res) => {
 	authlogin.getAuthUrl().then(url => res.redirect(url)).catch(() => error(res, 500, "Steam Error."));
 });
@@ -551,6 +553,50 @@ app.get("/auth/steam/add", (req, res) => {
 app.get("/api/steam/getname", (req, res) => {
 	if (!isNaN(req.query.id))
 		axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.query.id}`).then(result => res.send(result.data.response.players[0])).catch(err => console.error(err));
+});
+//#endregion
+//#region youtube
+const youtubeLogin = new YoutubeAuth(googleconfig.web.client_id, googleconfig.web.client_secret, url + "auth/youtube/login");
+const youtubeAdd = new YoutubeAuth(googleconfig.web.client_id, googleconfig.web.client_secret, url + "auth/youtube/add");
+app.get("/redirect/youtube/login", (req, res) => {
+	youtubeLogin.getAuthUrl("select_account", req.session).then(
+		url => res.redirect(url)
+	).catch(console.error);
+});
+app.get("/redirect/youtube/add", (req, res) => {
+	if (typeof (req.session.userid) === "undefined")
+		return error(res, 401, "Log In First!");
+	youtubeAdd.getAuthUrl("select_account", req.session).then(
+		url => {
+			res.redirect(url);
+		}
+	).catch(console.error);
+});
+app.get("/auth/youtube/login", (req, res) => {
+	youtubeLogin.verify(req.query, req.session, ["id"]).then(data =>
+		database.createAccountWith("youtube_id", data.id).then(userid => {
+			req.session.userid = userid;
+			res.redirect("/youtube/" + data.id);
+		}).catch(() => error(res, 500, "Database Error"))
+	).catch(err => {
+		console.error(err);
+		error(res, 500, "YouTube Error");
+	});
+});
+app.get("/auth/youtube/add", (req, res) => {
+	if (typeof (req.session.userid) === "undefined")
+		return error(res, 401, "Log In First!");
+	youtubeAdd.verify(req.query, req.session, ["id"]).then(data =>
+		database.addToAccount("youtube_id", req.session.userid, data.id).then(() =>
+			res.redirect("/youtube/" + data.id)
+		).catch(err => {
+			console.error(err);
+			error(res, 500, "Database Error");
+		})
+	).catch(err => {
+		console.error(err);
+		error(res, 500, "YouTube Error");
+	});
 });
 //#endregion
 //#region embed
@@ -674,6 +720,32 @@ function getData(from, name) {
 						reject("Steam Error.");
 				});
 				break;
+			case "youtube":
+				axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${name}&key=${googleconfig.api_key}`, {
+					headers: {
+						Accept: "application/json"
+					}
+				}).then(result => {
+					if (result.data.pageInfo.totalResults < 1)
+						return reject("This account doesn't exist.");
+					database.getUser("YOUTUBE_ID", name).then(user => {
+						if (typeof user === "undefined")
+							return reject("This user doesn't have MOVR.");
+						let finalObject = result.data.items[0];
+						finalObject.name = finalObject.snippet.title;
+						finalObject.html_url = finalObject.id;
+						finalObject.picture = finalObject.snippet.thumbnails.high.url;
+						resolve({
+							dbdata: user,
+							userdata: {
+								"YOUTUBE_ID": finalObject
+							}
+						});
+					}).catch(err => reject("Database Error."));
+				}).catch(err => {
+					reject("YouTube Error.");
+				});
+				break;
 			case "id":
 				if (isNaN(name))
 					reject("Invalid ID.");
@@ -790,6 +862,26 @@ function getProfile(dbdata, userdata) {
 									resolve(finalObject);
 								})
 								.catch(err => reject("Steam Errror."));
+							break;
+						case "YOUTUBE_ID":
+							axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${id}&key=${googleconfig.api_key}`, {
+								headers: {
+									Accept: "application/json"
+								}
+							}).then(result => {
+								if (result.data.pageInfo.totalResults < 1)
+									return reject("This account doesn't exist.");
+								let finalObject = {};
+								finalObject[sort] = {
+									name: result.data.items[0].snippet.title,
+									html_url: "https://youtube.com/channel/" + result.data.items[0].id,
+									picture: result.data.items[0].snippet.thumbnails.high.url
+								};
+								resolve(finalObject);
+							}).catch(err => {
+								console.error(err)
+								reject("YouTube Error.");
+							});
 							break;
 						default:
 							resolve({});

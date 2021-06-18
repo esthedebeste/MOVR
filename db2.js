@@ -27,7 +27,7 @@ export default class Db2 {
                 throw new Error("Couldn't find db2 credentials in process.env.VCAP_SERVICES");
         } else
             throw new Error("Couldn't find db2 credentials (maybe you haven't specified fromfile?)");
-        let connString = `DRIVER={DB2};DATABASE=${creds.db};HOSTNAME=${creds.hostname};UID=${creds.username};PWD=${creds.password};PORT=${creds.port+1};PROTOCOL=TCPIP;Security=SSL;`;
+        let connString = `DRIVER={DB2};DATABASE=${creds.db};HOSTNAME=${creds.hostname};UID=${creds.username};PWD=${creds.password};PORT=${creds.port + 1};PROTOCOL=TCPIP;Security=SSL;`;
         console.log(`Connecting to database with hostname ${creds.hostname}...`);
         this.db = openSync(connString);
         console.log("Connected!");
