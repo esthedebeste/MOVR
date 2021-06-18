@@ -482,7 +482,7 @@ function twitterCallback(req, res, oauth) {
 app.get('/auth/twitter/login', async (req, res) => {
 	twitterCallback(req, res, loginOauth).then(user => {
 		delete req.session.twitterOauthRequestToken;
-		delete twitterOauthRequestTokenSecret;
+		delete req.session.twitterOauthRequestTokenSecret;
 		database.createAccountWith("twitter_id", user.user_id).then(() => res.redirect("/twitter/" + user.screen_name));
 	});
 });
@@ -490,7 +490,7 @@ app.get('/auth/twitter/add', async (req, res) => {
 	if (typeof (req.session.userid) !== "undefined")
 		twitterCallback(req, res, addOauth).then(user => {
 			delete req.session.twitterOauthRequestToken;
-			delete twitterOauthRequestTokenSecret;
+			delete req.session.twitterOauthRequestTokenSecret;
 			database.addToAccount("twitter_id", req.session.userid, user.user_id).then(result => {
 				res.redirect("/twitter/" + user.screen_name);
 			});

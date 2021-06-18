@@ -2,4 +2,4 @@ applications:
 - name: movr
   memory: 256M
   buildpacks:
-    - sdk-for-nodejs
+    - https://github.com/cloudfoundry/nodejs-buildpack
