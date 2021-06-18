@@ -29,11 +29,10 @@ jobs:
         ibmcloud --version
     # Authenticate with IBM Cloud CLI
     - name: Authenticate with IBM Cloud CLI
+      run: ibmcloud login --apikey "${IBM_CLOUD_API_KEY}" -r "${IBM_CLOUD_REGION}" -g default
+    - name: CF Install
       run: |
-        ibmcloud login --apikey "${IBM_CLOUD_API_KEY}" -r "${IBM_CLOUD_REGION}" -g default
-		- name: CF Install
-			run: |
-				ibmcloud cf install
-				ibmcloud target --cf
+        ibmcloud cf install
+        ibmcloud target --cf
     - name: CF Push
-			run: ibmcloud cf push
+      run: ibmcloud cf push
