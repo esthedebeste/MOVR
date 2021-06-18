@@ -10,6 +10,7 @@ import sirv from "sirv";
 import ejs from "ejs";
 import SteamAuth from "@tbhmens/steam-auth";
 import Database from "./db2.js";
+import TwitchAuth from "@tbhmens/twitch-auth"
 const axios = ax.create({
 	headers: {
 		"User-Agent": "MOVR"
@@ -284,101 +285,48 @@ app.get("/api/discord/getname", (req, res) => {
 
 //#endregion
 //#region twitch
-app.get("/redirect/twitch/login", async (req, res) => {
-	req.session.twitchstate = crypto.randomBytes(24).toString("base64url");
-	res.redirect(`https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${twitchcreds.id}&redirect_uri=${url}auth/twitch/login&scope=user:read:email&force_verify=true&state=${req.session.twitchstate}`);
-});
-app.get("/redirect/twitch/add", async (req, res) => {
-	req.session.twitchstate = crypto.randomBytes(24).toString("base64url");
-	res.redirect(`https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${twitchcreds.id}&redirect_uri=${url}auth/twitch/add&scope=user:read:email&force_verify=true&state=${req.session.twitchstate}`);
-});
+const twitchLogin = new TwitchAuth(twitchcreds.id, twitchcreds.secret, url + "auth/twitch/login");
+const twitchAdd = new TwitchAuth(twitchcreds.id, twitchcreds.secret, url + "auth/twitch/add");
+app.get("/redirect/twitch/login", (req, res) =>
+	twitchLogin.getAuthUrl(true, {}, req.session).then(url => res.redirect(url))
+);
+app.get("/redirect/twitch/add", (req, res) => {
+	if (typeof (req.session.userid) === "undefined")
+		return error(res, 401, "Log In First!");
+	twitchAdd.getAuthUrl(true, {}, req.session).then(url => res.redirect(url));
+}
+);
 app.get("/auth/twitch/login", async (req, res) => {
-	let code = req.query.code;
-	if (typeof req.query.state === "undefined" || req.query.state !== req.session.twitchstate)
-		error(res, 400, "Authentication Error.");
-	else if (code)
-		loginToTwitch(code, url + "auth/twitch/login").then(session => {
-			req.session.twitchtoken = session.access_token;
-			getTwitchUserId(session.access_token).then(id => {
-				database.createAccountWith("twitch_id", id).then(userid => {
-					req.session.userid = userid;
-					console.log(userid + " logged in!");
-					res.redirect("/id/" + userid);
-				}).catch(err => {
-					console.error(err.toString());
-					error(res, 500, "Database Errror.");
-				});
-			}).catch(err => {
-				console.error(err.toString());
-				error(res, 500, "Twitch Error.");
-			});
+	twitchLogin.verify(req.query, req.session).then(data => {
+		database.createAccountWith("twitch_id", data.sub).then(userid => {
+			req.session.userid = userid;
+			console.log(userid + " logged in!");
+			res.redirect("/id/" + userid);
+		}).catch(err => {
+			console.error(err.toString());
+			error(res, 500, "Database Errror.");
 		});
-	else
-		error(res, 400, "Twitch Callback Broken.");
+	}).catch(err => {
+		console.error(err);
+		error(res, 500, "Authentication Error.")
+	});
 });
 app.get("/auth/twitch/add", async (req, res) => {
-	let code = req.query.code;
-	if (typeof req.query.state === "undefined" || req.query.state !== req.session.twitchstate)
-		error(res, 400, "Authentication Error.");
-	else if (code)
-		if (typeof (req.session.userid) !== "undefined")
-			loginToTwitch(code, url + "auth/twitch/add").then(session => {
-				req.session.twitchtoken = session.access_token;
-				getTwitchUserId(session.access_token).then(id => {
-					database.addToAccount("twitch_id", req.session.userid, id).then(() => {
-						res.redirect("/id/" + req.session.userid);
-					}).catch(err => {
-						console.error(err.toString());
-						error(res, 500, "Database Errror.");
-					});
-				}).catch(err => {
-					console.error(err.toString());
-					error(res, 500, "Twitch Error.");
-				});
-			}).catch(a => {
-				console.error(a);
-				error(res, 500, "Twitch Error.");
-			});
-		else
-			error(res, 401, "Log In First!");
-	else
-		error(res, 400, "Twitch Callback Broken.");
-});
-
-/**
- * 
- * @param {string} code - Twitch OAuth Code
- * @param {string} redirect - Redirect URI
- * @returns {Promise<{access_token: string, refresh_token: string, expires_in: number, scope: Array<string>, token_type: "bearer"}>}
- */
-function loginToTwitch(code, redirect) {
-	return new Promise((resolve, reject) => {
-		axios.post(`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&code=${code}&grant_type=authorization_code&redirect_uri=${redirect}`).then(result => {
-			resolve(result.data);
-		}).catch(a => {
-			reject(a);
+	if (typeof (req.session.userid) === "undefined")
+		return error(res, 401, "Log In First!");
+	twitchLogin.verify(req.query, req.session).then(data => {
+		database.addToAccount("twitch_id", data.sub).then(() => {
+			console.log(userid + " logged in!");
+			res.redirect("/id/" + userid);
+		}).catch(err => {
+			console.error(err.toString());
+			error(res, 500, "Database Errror.");
 		});
+	}).catch(err => {
+		console.error(err);
+		error(res, 500, "Authentication Error.")
 	});
-}
-
-/**
- * 
- * @param {string} token - Twitch Access Token 
- * @returns {Promise<number>} User ID 
- */
-function getTwitchUserId(token) {
-	return new Promise((resolve, reject) => {
-		axios.get("https://api.twitch.tv/helix/users", {
-			headers: {
-				"Client-Id": twitchcreds.id,
-				Authorization: `Bearer ${token}`
-			}
-		}).then(result => {
-			resolve(result.data.data[0].id);
-		}).catch(reject);
-	});
-}
-
+});
 let bearerKeyCache = null;
 
 /**
@@ -525,14 +473,14 @@ function twitterCallback(req, res, oauth) {
 			twitterOauthRequestToken,
 			twitterOauthRequestTokenSecret,
 			oauth_verifier, oauth).then(result => {
-			const {
-				results
-			} = result;
-			resolve(results);
-		}).catch(err => {
-			console.error(err);
-			error(res);
-		});
+				const {
+					results
+				} = result;
+				resolve(results);
+			}).catch(err => {
+				console.error(err);
+				error(res);
+			});
 	});
 }
 app.get('/auth/twitter/login', async (req, res) => {
