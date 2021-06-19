@@ -21,7 +21,6 @@ const app = new App({
     if (err instanceof Error) error(res, 500, err.name);
     else error(res, 500, "Internal Server Error.");
   },
-  noMatchHandler: (_, res) => error(res, 404, "Page Not Found!"),
   settings: {
     xPoweredBy: false,
     freshnessTesting: true,
@@ -88,13 +87,13 @@ app.get("/api/getaccount/", (req, res) => {
   if (!isNaN(req.query.gh))
     database
       .getAccount("github_id", req.query.gh, "ID")
-      .then((result) => res.send(result))
-      .catch((e) => console.error(e));
+      .then(result => res.send(result))
+      .catch(e => console.error(e));
   else if (!isNaN(id))
     database
       .getUser("ID", id)
-      .then((user) => res.send(user))
-      .catch((e) => console.error(e));
+      .then(user => res.send(user))
+      .catch(e => console.error(e));
   else error(res, 400, "Invalid Query.");
 });
 
@@ -103,37 +102,38 @@ app.post("/api/deleteaccount", (req, res) => {
   if (!isNaN(req.session.userid))
     db.query(
       `delete from movr_users where id=${req.session.userid} limit 1`
-    ).catch((e) => console.error(e));
+    ).catch(e => console.error(e));
 });
 //#endregion
 //#region github
 app.get("/auth/github/login", async (req, res) => {
   let code = req.query.code;
   if (code)
-    loginToGithub(code).then((session) => {
-      getGithubUserId(session.access_token)
-        .then((id) => {
-          database
-            .createAccountWith("github_id", id)
-            .then((userid) => {
-              req.session.userid = userid;
-              console.log(userid + " logged in!");
-              res.redirect("/id/" + userid);
-            })
-            .catch((err) => {
-              console.error(err.toString());
-              error(res, 500, "Database Error.");
-            });
-        })
-        .catch((err) => {
-          console.error(err.toString());
-          error(res, 500, "GitHub Error.");
-        });
-    })
-	.catch((a) => {
-		console.error(err.toString());
-		error(res, 500, "GitHub Error.");
-	});
+    loginToGithub(code)
+      .then(session => {
+        getGithubUserId(session.access_token)
+          .then(id => {
+            database
+              .createAccountWith("github_id", id)
+              .then(userid => {
+                req.session.userid = userid;
+                console.log(userid + " logged in!");
+                res.redirect("/id/" + userid);
+              })
+              .catch(err => {
+                console.error(err.toString());
+                error(res, 500, "Database Error.");
+              });
+          })
+          .catch(err => {
+            console.error(err.toString());
+            error(res, 500, "GitHub Error.");
+          });
+      })
+      .catch(a => {
+        console.error(err.toString());
+        error(res, 500, "GitHub Error.");
+      });
   else res.redirect("/");
 });
 app.get("/auth/github/add", async (req, res) => {
@@ -141,27 +141,27 @@ app.get("/auth/github/add", async (req, res) => {
   if (code)
     if (typeof req.session.userid !== "undefined")
       loginToGithub(code)
-        .then((session) => {
+        .then(session => {
           getGithubUserId(session.access_token)
-            .then((id) => {
+            .then(id => {
               database
                 .addToAccount("github_id", req.session.userid, id)
                 .then(() => {
                   res.redirect("/id/" + req.session.userid);
                 })
-                .catch((err) => {
+                .catch(err => {
                   console.error(err.toString());
                   error(res, 500, "Database Error.");
                 });
             })
-            .catch((err) => {
+            .catch(err => {
               console.error(err.toString());
               error(res, 500, "GitHub Error.");
             });
         })
-        .catch((a) => {
-			console.error(err.toString());
-			error(res, 500, "GitHub Error.");
+        .catch(a => {
+          console.error(err.toString());
+          error(res, 500, "GitHub Error.");
         });
     else error(res, 400, "You need to be logged in.");
   else res.redirect("/");
@@ -188,10 +188,10 @@ function loginToGithub(code) {
           },
         }
       )
-      .then((result) => {
+      .then(result => {
         resolve(result.data);
       })
-      .catch((a) => {
+      .catch(a => {
         reject(a);
       });
   });
@@ -210,7 +210,7 @@ function getGithubUserId(token) {
           Authorization: `Bearer ${token}`,
         },
       })
-      .then((result) => {
+      .then(result => {
         resolve(result.data.id);
       })
       .catch(reject);
@@ -223,27 +223,27 @@ app.get("/auth/discord/login", async (req, res) => {
   let code = req.query.code;
   if (code)
     loginToDiscord(code, url + "auth/discord/login")
-      .then((session) => {
+      .then(session => {
         getDiscordUserId(session.access_token)
-          .then((id) => {
+          .then(id => {
             database
               .createAccountWith("discord_id", id)
-              .then((userid) => {
+              .then(userid => {
                 req.session.userid = userid;
                 console.log(userid + " logged in!");
                 res.redirect("/id/" + userid);
               })
-              .catch((err) => {
+              .catch(err => {
                 console.error(err.toString());
                 error(res, 500, "Database Error.");
               });
           })
-          .catch((err) => {
+          .catch(err => {
             console.error(err.toString());
             error(res, 500, "Discord Error.");
           });
       })
-      .catch((a) => {
+      .catch(a => {
         console.error(a.toString());
         error(res, 500);
       });
@@ -265,10 +265,10 @@ function loginToDiscord(code, redirect) {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       })
-      .then((result) => {
+      .then(result => {
         resolve(result.data);
       })
-      .catch((a) => {
+      .catch(a => {
         reject(a);
       });
   });
@@ -287,7 +287,7 @@ function getDiscordUserId(token) {
           Authorization: `Bearer ${token}`,
         },
       })
-      .then((result) => {
+      .then(result => {
         resolve(result.data.id);
       })
       .catch(reject);
@@ -299,25 +299,25 @@ app.get("/auth/discord/add", (req, res) => {
   if (code)
     if (typeof req.session.userid !== "undefined")
       loginToDiscord(code, url + "auth/discord/add")
-        .then((session) => {
+        .then(session => {
           getDiscordUserId(session.access_token)
-            .then((id) => {
+            .then(id => {
               database
                 .addToAccount("discord_id", req.session.userid, id)
-                .then((userid) => {
+                .then(userid => {
                   res.redirect("/id/" + req.session.userid);
                 })
-                .catch((err) => {
+                .catch(err => {
                   console.error(err.toString());
                   error(res, 500, "Database Error.");
                 });
             })
-            .catch((err) => {
+            .catch(err => {
               console.error(err.toString());
               error(res, 500, "Discord Error.");
             });
         })
-        .catch((a) => {
+        .catch(a => {
           console.error(a);
           error(res, 500);
         });
@@ -333,7 +333,7 @@ app.get("/api/discord/getname", (req, res) => {
           Authorization: `Bot ${discordcreds.bot}`,
         },
       })
-      .then((result) => {
+      .then(result => {
         res.send(result.data.username + "#" + result.data.discriminator);
       })
       .catch(() => {
@@ -355,30 +355,30 @@ const twitchAdd = new TwitchAuth(
   url + "auth/twitch/add"
 );
 app.get("/redirect/twitch/login", (req, res) =>
-  twitchLogin.getAuthUrl(true, {}, req.session).then((url) => res.redirect(url))
+  twitchLogin.getAuthUrl(true, {}, req.session).then(url => res.redirect(url))
 );
 app.get("/redirect/twitch/add", (req, res) => {
   if (typeof req.session.userid === "undefined")
     return error(res, 401, "Log In First!");
-  twitchAdd.getAuthUrl(true, {}, req.session).then((url) => res.redirect(url));
+  twitchAdd.getAuthUrl(true, {}, req.session).then(url => res.redirect(url));
 });
 app.get("/auth/twitch/login", async (req, res) => {
   twitchLogin
     .verify(req.query, req.session)
-    .then((data) => {
+    .then(data => {
       database
         .createAccountWith("twitch_id", data.sub)
-        .then((userid) => {
+        .then(userid => {
           req.session.userid = userid;
           console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err.toString());
           error(res, 500, "Database Errror.");
         });
     })
-    .catch((err) => {
+    .catch(err => {
       console.error(err);
       error(res, 500, "Authentication Error.");
     });
@@ -388,19 +388,19 @@ app.get("/auth/twitch/add", async (req, res) => {
     return error(res, 401, "Log In First!");
   twitchLogin
     .verify(req.query, req.session)
-    .then((data) => {
+    .then(data => {
       database
         .addToAccount("twitch_id", data.sub)
         .then(() => {
           console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err.toString());
           error(res, 500, "Database Errror.");
         });
     })
-    .catch((err) => {
+    .catch(err => {
       console.error(err);
       error(res, 500, "Authentication Error.");
     });
@@ -421,7 +421,7 @@ function getBearerKey() {
         .post(
           `https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`
         )
-        .then((creds) =>
+        .then(creds =>
           resolve(
             (bearerKeyCache = {
               access_token: creds.data.access_token,
@@ -429,7 +429,7 @@ function getBearerKey() {
             })
           )
         )
-        .catch((err) => {
+        .catch(err => {
           console.error(err);
           reject(err);
         });
@@ -440,7 +440,7 @@ function getBearerKey() {
 app.get("/api/twitch/getname", (req, res) => {
   if (typeof req.query.id !== "undefined")
     getBearerKey()
-      .then((creds) => {
+      .then(creds => {
         axios
           .get(`https://api.twitch.tv/helix/users?id=${req.query.id}`, {
             headers: {
@@ -448,11 +448,11 @@ app.get("/api/twitch/getname", (req, res) => {
               "Client-Id": twitchcreds.id,
             },
           })
-          .then((result) => {
+          .then(result => {
             res.send(result.data.data[0].display_name);
           });
       })
-      .catch((err) => {
+      .catch(err => {
         error(res, 500, "Internal Twitch Error.");
       });
   else error(res, 400);
@@ -489,7 +489,7 @@ app.get("/redirect/twitter/add", twitter("authorize", addOauth));
 function twitter(method, oauth) {
   return async (req, res) => {
     getOAuthRequestToken(oauth)
-      .then((result) => {
+      .then(result => {
         const { oauthRequestToken, oauthRequestTokenSecret } = result;
         req.session.twitterOauthRequestToken = oauthRequestToken;
         req.session.twitterOauthRequestTokenSecret = oauthRequestTokenSecret;
@@ -498,7 +498,7 @@ function twitter(method, oauth) {
           `https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`
         );
       })
-      .catch((err) => {
+      .catch(err => {
         error(res, 500, "Twitter Error.");
       });
   };
@@ -578,18 +578,18 @@ function twitterCallback(req, res, oauth) {
       oauth_verifier,
       oauth
     )
-      .then((result) => {
+      .then(result => {
         const { results } = result;
         resolve(results);
       })
-      .catch((err) => {
+      .catch(err => {
         console.error(err);
         error(res);
       });
   });
 }
 app.get("/auth/twitter/login", async (req, res) => {
-  twitterCallback(req, res, loginOauth).then((user) => {
+  twitterCallback(req, res, loginOauth).then(user => {
     delete req.session.twitterOauthRequestToken;
     delete req.session.twitterOauthRequestTokenSecret;
     database
@@ -599,12 +599,12 @@ app.get("/auth/twitter/login", async (req, res) => {
 });
 app.get("/auth/twitter/add", async (req, res) => {
   if (typeof req.session.userid !== "undefined")
-    twitterCallback(req, res, addOauth).then((user) => {
+    twitterCallback(req, res, addOauth).then(user => {
       delete req.session.twitterOauthRequestToken;
       delete req.session.twitterOauthRequestTokenSecret;
       database
         .addToAccount("twitter_id", req.session.userid, user.user_id)
-        .then((result) => {
+        .then(result => {
           res.redirect("/twitter/" + user.screen_name);
         });
     });
@@ -621,7 +621,7 @@ app.get("/api/twitter/getname", (req, res) => {
           },
         }
       )
-      .then((data) => {
+      .then(data => {
         res.send(data.data);
       })
       .catch(() => {
@@ -637,32 +637,32 @@ let authadd = new SteamAuth(url + "auth/steam/add", url);
 app.get("/redirect/steam/login", (req, res) => {
   authlogin
     .getAuthUrl()
-    .then((url) => res.redirect(url))
+    .then(url => res.redirect(url))
     .catch(() => error(res, 500, "Steam Error."));
 });
 app.get("/redirect/steam/add", (req, res) => {
   authadd
     .getAuthUrl()
-    .then((url) => res.redirect(url))
+    .then(url => res.redirect(url))
     .catch(() => error(res, 500, "Steam Error."));
 });
 app.get("/auth/steam/login", (req, res) => {
   authlogin
     .verify(req)
-    .then((steamId) => {
+    .then(steamId => {
       database
         .createAccountWith("steam_id", steamId)
-        .then((userid) => {
+        .then(userid => {
           req.session.userid = userid;
           console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err.toString());
           error(res, 500, "Database Errror.");
         });
     })
-    .catch((err) => {
+    .catch(err => {
       console.error(err);
       error(res, 400, "Steam Authentication Error.");
     });
@@ -671,14 +671,14 @@ app.get("/auth/steam/add", (req, res) => {
   if (typeof req.session.userid !== "undefined")
     authadd
       .verify(req)
-      .then((steamId) => {
+      .then(steamId => {
         database
           .addToAccount("steam_id", req.session.userid, steamId)
-          .then((id) => {
+          .then(id => {
             res.redirect("/id/" + req.session.userid);
           });
       })
-      .catch((err) => {
+      .catch(err => {
         error(res, 400, "Steam Authentication Error.");
       });
 });
@@ -688,8 +688,8 @@ app.get("/api/steam/getname", (req, res) => {
       .get(
         `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.query.id}`
       )
-      .then((result) => res.send(result.data.response.players[0]))
-      .catch((err) => console.error(err));
+      .then(result => res.send(result.data.response.players[0]))
+      .catch(err => console.error(err));
 });
 //#endregion
 //#region youtube
@@ -706,7 +706,7 @@ const youtubeAdd = new YoutubeAuth(
 app.get("/redirect/youtube/login", (req, res) => {
   youtubeLogin
     .getAuthUrl("select_account", req.session)
-    .then((url) => res.redirect(url))
+    .then(url => res.redirect(url))
     .catch(console.error);
 });
 app.get("/redirect/youtube/add", (req, res) => {
@@ -714,7 +714,7 @@ app.get("/redirect/youtube/add", (req, res) => {
     return error(res, 401, "Log In First!");
   youtubeAdd
     .getAuthUrl("select_account", req.session)
-    .then((url) => {
+    .then(url => {
       res.redirect(url);
     })
     .catch(console.error);
@@ -722,16 +722,16 @@ app.get("/redirect/youtube/add", (req, res) => {
 app.get("/auth/youtube/login", (req, res) => {
   youtubeLogin
     .verify(req.query, req.session, ["id"])
-    .then((data) =>
+    .then(data =>
       database
         .createAccountWith("youtube_id", data.id)
-        .then((userid) => {
+        .then(userid => {
           req.session.userid = userid;
           res.redirect("/youtube/" + data.id);
         })
         .catch(() => error(res, 500, "Database Error"))
     )
-    .catch((err) => {
+    .catch(err => {
       console.error(err);
       error(res, 500, "YouTube Error");
     });
@@ -741,16 +741,16 @@ app.get("/auth/youtube/add", (req, res) => {
     return error(res, 401, "Log In First!");
   youtubeAdd
     .verify(req.query, req.session, ["id"])
-    .then((data) =>
+    .then(data =>
       database
         .addToAccount("youtube_id", req.session.userid, data.id)
         .then(() => res.redirect("/youtube/" + data.id))
-        .catch((err) => {
+        .catch(err => {
           console.error(err);
           error(res, 500, "Database Error");
         })
     )
-    .catch((err) => {
+    .catch(err => {
       console.error(err);
       error(res, 500, "YouTube Error");
     });
@@ -762,8 +762,8 @@ app.get("/api/youtube/getname", (req, res) => {
       .get(
         `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${req.query.id}&key=${googlecreds.api_key}`
       )
-      .then((result) => res.send(result.data.items[0]))
-      .catch((err) => console.error(err));
+      .then(result => res.send(result.data.items[0]))
+      .catch(err => console.error(err));
 });
 //#endregion
 //#region embed
@@ -781,13 +781,13 @@ function getData(from, name) {
           .get("https://api.github.com/users/" + name, {
             auth: ghcreds.tokenauth,
           })
-          .then((userdata) => {
+          .then(userdata => {
             userdata.data.name = userdata.data.name;
             userdata.data.html_url = userdata.data.html_url;
             userdata.data.picture = userdata.data.avatar_url;
             database
               .getUser("github_id", userdata.data.id)
-              .then((result) =>
+              .then(result =>
                 resolve({
                   dbdata: result,
                   userdata: {
@@ -795,9 +795,9 @@ function getData(from, name) {
                   },
                 })
               )
-              .catch((e) => reject("Uh Oh!"));
+              .catch(e => reject("Uh Oh!"));
           })
-          .catch((err) => {
+          .catch(err => {
             console.error(err);
             reject("GitHub Error.");
           });
@@ -807,7 +807,7 @@ function getData(from, name) {
         else
           database
             .getUser("GITHUB_ID", name)
-            .then((user) => {
+            .then(user => {
               if (typeof user === "undefined")
                 reject("This person doesn't have a movr account!");
               else
@@ -815,11 +815,11 @@ function getData(from, name) {
                   dbdata: user,
                 });
             })
-            .catch((e) => reject("Database Error"));
+            .catch(e => reject("Database Error"));
         break;
       case "twitch":
         getBearerKey()
-          .then((creds) => {
+          .then(creds => {
             axios
               .get(`https://api.twitch.tv/helix/users?login=${name}`, {
                 headers: {
@@ -827,7 +827,7 @@ function getData(from, name) {
                   "Client-Id": twitchcreds.id,
                 },
               })
-              .then((result) => {
+              .then(result => {
                 result.data.data[0].name = result.data.data[0].display_name;
                 result.data.data[0].html_url =
                   "https://twitch.tv/" + result.data.data[0].login;
@@ -835,7 +835,7 @@ function getData(from, name) {
                   result.data.data[0].profile_image_url;
                 database
                   .getUser("TWITCH_ID", result.data.data[0].id)
-                  .then((user) => {
+                  .then(user => {
                     if (typeof user === "undefined")
                       reject("This person doesn't have a movr account!");
                     else
@@ -846,14 +846,14 @@ function getData(from, name) {
                         },
                       });
                   })
-                  .catch((err) => {
+                  .catch(err => {
                     console.error(err);
                     error("Database Error.");
                   });
               })
-              .catch((err) => reject(err));
+              .catch(err => reject(err));
           })
-          .catch((err) => console.error(err));
+          .catch(err => console.error(err));
 
         break;
       case "twitter":
@@ -866,7 +866,7 @@ function getData(from, name) {
               },
             }
           )
-          .then((data) => {
+          .then(data => {
             data.data.html_url = "https://twitter.com/" + data.data.screen_name;
             data.data.picture = data.data.profile_image_url_https.replace(
               "_normal",
@@ -875,7 +875,7 @@ function getData(from, name) {
             data.data.entities = {};
             database
               .getUser("TWITTER_ID", data.data.id_str)
-              .then((result) =>
+              .then(result =>
                 resolve({
                   dbdata: result,
                   userdata: {
@@ -883,9 +883,9 @@ function getData(from, name) {
                   },
                 })
               )
-              .catch((e) => reject("Uh Oh!"));
+              .catch(e => reject("Uh Oh!"));
           })
-          .catch((err) => {
+          .catch(err => {
             console.error(err);
             reject("Twitter Error.");
           });
@@ -895,19 +895,19 @@ function getData(from, name) {
           .get(
             `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${steamcreds.key}&vanityurl=${name}&url_type=1`
           )
-          .then((data) => {
+          .then(data => {
             if (data.data.response.success === 1) {
               axios
                 .get(
                   `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${data.data.response.steamid}`
                 )
-                .then((result) => {
+                .then(result => {
                   database
                     .getUser(
                       "STEAM_ID",
                       result.data.response.players[0].steamid
                     )
-                    .then((user) => {
+                    .then(user => {
                       if (typeof user === "undefined")
                         reject("This person doesn't have a movr account!");
                       else {
@@ -925,12 +925,12 @@ function getData(from, name) {
                         });
                       }
                     })
-                    .catch((err) => {
+                    .catch(err => {
                       console.error(err);
                       error("Database Error.");
                     });
                 })
-                .catch((err) => reject("Steam Errror."));
+                .catch(err => reject("Steam Errror."));
             } else if (data.data.response.success === 42)
               reject("This account doesn't exist.");
             else reject("Steam Error.");
@@ -946,12 +946,12 @@ function getData(from, name) {
               },
             }
           )
-          .then((result) => {
+          .then(result => {
             if (result.data.pageInfo.totalResults < 1)
               return reject("This account doesn't exist.");
             database
               .getUser("YOUTUBE_ID", name)
-              .then((user) => {
+              .then(user => {
                 if (typeof user === "undefined")
                   return reject("This user doesn't have MOVR.");
                 let finalObject = result.data.items[0];
@@ -966,9 +966,9 @@ function getData(from, name) {
                   },
                 });
               })
-              .catch((err) => reject("Database Error."));
+              .catch(err => reject("Database Error."));
           })
-          .catch((err) => {
+          .catch(err => {
             reject("YouTube Error.");
           });
         break;
@@ -977,7 +977,7 @@ function getData(from, name) {
         else
           database
             .getUser("ID", name)
-            .then((user) => {
+            .then(user => {
               if (typeof user === "undefined")
                 reject("This person doesn't have a movr account!");
               else
@@ -985,7 +985,7 @@ function getData(from, name) {
                   dbdata: user,
                 });
             })
-            .catch((e) => reject("Database Error"));
+            .catch(e => reject("Database Error"));
         break;
       default:
         reject("Method Not Found");
@@ -1022,7 +1022,7 @@ function getProfile(dbdata, userdata) {
                 .get("https://api.github.com/user/" + id, {
                   auth: ghcreds.tokenauth,
                 })
-                .then((result) => {
+                .then(result => {
                   let finalObject = {};
                   finalObject[sort] = {
                     name: result.data.name,
@@ -1031,7 +1031,7 @@ function getProfile(dbdata, userdata) {
                   };
                   resolve(finalObject);
                 })
-                .catch((err) => {
+                .catch(err => {
                   let finalObject = {};
                   finalObject[sort] = {
                     name: "try again later",
@@ -1050,7 +1050,7 @@ function getProfile(dbdata, userdata) {
                     },
                   }
                 )
-                .then((result) => {
+                .then(result => {
                   let finalObject = {};
                   finalObject[sort] = {
                     name: result.data.name,
@@ -1067,7 +1067,7 @@ function getProfile(dbdata, userdata) {
                     Authorization: `Bot ${discordcreds.bot}`,
                   },
                 })
-                .then((result) => {
+                .then(result => {
                   let finalObject = {};
                   finalObject[sort] = {
                     name:
@@ -1078,7 +1078,7 @@ function getProfile(dbdata, userdata) {
                 });
               break;
             case "TWITCH_ID":
-              getBearerKey().then((creds) =>
+              getBearerKey().then(creds =>
                 axios
                   .get(`https://api.twitch.tv/helix/users?id=${id}`, {
                     headers: {
@@ -1086,7 +1086,7 @@ function getProfile(dbdata, userdata) {
                       "Client-Id": twitchcreds.id,
                     },
                   })
-                  .then((result) => {
+                  .then(result => {
                     let finalObject = {};
                     finalObject[sort] = {
                       name: result.data.display_name,
@@ -1102,7 +1102,7 @@ function getProfile(dbdata, userdata) {
                 .get(
                   `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${id}`
                 )
-                .then((result) => {
+                .then(result => {
                   let finalObject = {};
                   finalObject[sort] = {
                     name: result.data.response.players[0].personaname,
@@ -1111,7 +1111,7 @@ function getProfile(dbdata, userdata) {
                   };
                   resolve(finalObject);
                 })
-                .catch((err) => reject("Steam Errror."));
+                .catch(err => reject("Steam Errror."));
               break;
             case "YOUTUBE_ID":
               axios
@@ -1123,7 +1123,7 @@ function getProfile(dbdata, userdata) {
                     },
                   }
                 )
-                .then((result) => {
+                .then(result => {
                   if (result.data.pageInfo.totalResults < 1)
                     return reject("This account doesn't exist.");
                   let finalObject = {};
@@ -1135,7 +1135,7 @@ function getProfile(dbdata, userdata) {
                   };
                   resolve(finalObject);
                 })
-                .catch((err) => {
+                .catch(err => {
                   console.error(err);
                   reject("YouTube Error.");
                 });
@@ -1156,11 +1156,11 @@ app.get("/:from/:name", (req, res) => {
   const from = req.params.from;
   const name = req.params.name;
   getData(from, name)
-    .then((data) => {
+    .then(data => {
       if (typeof data.dbdata === "undefined")
         error(res, 404, "This account type isn't supported.");
       else
-        getProfile(data.dbdata, data.userdata).then((result) => {
+        getProfile(data.dbdata, data.userdata).then(result => {
           res.render("person.ejs", {
             from: req.params.from,
             name: req.params.name,
@@ -1174,10 +1174,10 @@ app.get("/:from/:name", (req, res) => {
           });
         });
     })
-    .catch((err) => {
+    .catch(err => {
       if (typeof err === "string") error(res, 500, err);
     });
 });
-app.get("*");
+app.get("*", (_,res)=>error(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));

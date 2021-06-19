@@ -10,16 +10,15 @@ function getBgSeed() {
     return setWithExpiry();
   return item;
 }
-const steps = Math.round(
-  Math.log(Math.max(screen.width, screen.height)) / Math.log(4)
-);
+const size = Math.max(screen.width, screen.height);
+const steps = Math.log2(size)/2;
 const seed = getBgSeed();
 let prefix = "";
-for (var i = 0; i <= steps; i++) {
-  prefix += `<div class="progbg" style="background-image: url('https://picsum.photos/seed/${seed}/${Math.pow(
+for (var i = 0; i < steps; i++) {
+  prefix = `<div class="progbg" style="background-image: url('https://picsum.photos/seed/${seed}/${Math.round(size/Math.pow(
     4,
     i
-  )}')">`;
+  ))}')">`+prefix;
 }
 document.body.innerHTML =
   prefix + document.body.innerHTML + "</div>".repeat(steps);

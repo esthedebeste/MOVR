@@ -5,6 +5,10 @@ body {
   color: #fff;
 }
 
+a {
+  text-decoration-line: none;
+}
+
 .progbg {
   position: fixed;
   left: 0;

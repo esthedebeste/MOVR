@@ -4,7 +4,8 @@
   "description": "Accountless way to connect accounts.",
   "main": "main.mjs",
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.js",
+    "format": "echo Formatting... && prettier -w --arrow-parens avoid . && echo Formatted."
   },
   "author": "tbhmens",
   "license": "CC0-1.0",

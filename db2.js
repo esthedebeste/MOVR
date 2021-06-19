@@ -53,25 +53,25 @@ export default class Db2 {
       // Existing check
       this.db
         .query(`select id from ${this.table} where ${type}=${id} limit 1`)
-        .then((result) => {
+        .then(result => {
           if (result.length > 0) return resolve(result[0].ID);
           // Create account
           this.db
             .query(`insert into ${this.table} (${type}) values (${id})`)
-            .then((result) => {
+            .then(result => {
               // Get account id
               this.db
                 .query(
                   `select id from ${this.table} where ${type}=${id} limit 1`
                 )
-                .then((id) => {
+                .then(id => {
                   resolve(id[0].ID);
                 })
-                .catch((e) => reject(e));
+                .catch(e => reject(e));
             })
-            .catch((e) => reject(e));
+            .catch(e => reject(e));
         })
-        .catch((err) => reject(err));
+        .catch(err => reject(err));
     });
   }
 
@@ -92,12 +92,12 @@ export default class Db2 {
             .query(
               `update ${this.table} set ${type}=${id} where id=${movrid} limit 1`
             )
-            .then((result) => {
+            .then(result => {
               resolve();
             })
-            .catch((e) => reject(e));
+            .catch(e => reject(e));
         })
-        .catch((e) => reject(e));
+        .catch(e => reject(e));
     });
   }
 
@@ -112,10 +112,10 @@ export default class Db2 {
     return new Promise((resolve, reject) => {
       this.db
         .query(`select * from ${this.table} where ${type}=${id} limit 1`)
-        .then((result) => {
+        .then(result => {
           resolve(result[0]);
         })
-        .catch((e) => reject(e));
+        .catch(e => reject(e));
     });
   }
 
@@ -134,10 +134,10 @@ export default class Db2 {
         .query(
           `select ${returntype} from ${this.table} where ${gettype}=${getvalue} limit 1`
         )
-        .then((result) => {
+        .then(result => {
           resolve(result[0][returntype]);
         })
-        .catch((e) => reject(e));
+        .catch(e => reject(e));
     });
   }
 }
