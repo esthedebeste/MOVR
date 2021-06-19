@@ -1,5 +1,5 @@
 applications:
-- name: movr
-  memory: 256M
-  buildpacks:
-    - https://github.com/cloudfoundry/nodejs-buildpack
+  - name: movr
+    memory: 256M
+    buildpacks:
+      - https://github.com/cloudfoundry/nodejs-buildpack
