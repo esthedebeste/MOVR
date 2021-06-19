@@ -129,7 +129,11 @@ app.get("/auth/github/login", async (req, res) => {
           console.error(err.toString());
           error(res, 500, "GitHub Error.");
         });
-    });
+    })
+	.catch((a) => {
+		console.error(err.toString());
+		error(res, 500, "GitHub Error.");
+	});
   else res.redirect("/");
 });
 app.get("/auth/github/add", async (req, res) => {
@@ -156,7 +160,8 @@ app.get("/auth/github/add", async (req, res) => {
             });
         })
         .catch((a) => {
-          res.send(JSON.stringify(a, null, ". . . ").replace(/\n/g, "<br>"));
+			console.error(err.toString());
+			error(res, 500, "GitHub Error.");
         });
     else error(res, 400, "You need to be logged in.");
   else res.redirect("/");
