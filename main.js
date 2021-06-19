@@ -18,8 +18,8 @@ const axios = ax.create({
 const app = new App({
   onError: (err, _, res) => {
     console.error(err);
-    if (err instanceof Error) error(res, 500, err.name);
-    else error(res, 500, "Internal Server Error.");
+    if (err instanceof Error) sendError(res, 500, err.name);
+    else sendError(res, 500, "Internal Server Error.");
   },
   settings: {
     xPoweredBy: false,
@@ -65,7 +65,7 @@ app.use(
  * @param {number} code
  * @param {string} errtext
  */
-function error(res, code = 500, errtext = "Internal Error.") {
+function sendError(res, code = 500, errtext = "Internal Error.") {
   res.status(code).render("error.ejs", {
     error: errtext,
   });
@@ -94,7 +94,7 @@ app.get("/api/getaccount/", (req, res) => {
       .getUser("ID", id)
       .then(user => res.send(user))
       .catch(e => console.error(e));
-  else error(res, 400, "Invalid Query.");
+  else sendError(res, 400, "Invalid Query.");
 });
 
 // Unused, but as there isn't a delete account method yet this'll have to do.
@@ -122,17 +122,17 @@ app.get("/auth/github/login", async (req, res) => {
               })
               .catch(err => {
                 console.error(err.toString());
-                error(res, 500, "Database Error.");
+                sendError(res, 500, "Database Error.");
               });
           })
           .catch(err => {
             console.error(err.toString());
-            error(res, 500, "GitHub Error.");
+            sendError(res, 500, "GitHub Error.");
           });
       })
       .catch(a => {
         console.error(err.toString());
-        error(res, 500, "GitHub Error.");
+        sendError(res, 500, "GitHub Error.");
       });
   else res.redirect("/");
 });
@@ -151,19 +151,19 @@ app.get("/auth/github/add", async (req, res) => {
                 })
                 .catch(err => {
                   console.error(err.toString());
-                  error(res, 500, "Database Error.");
+                  sendError(res, 500, "Database Error.");
                 });
             })
             .catch(err => {
               console.error(err.toString());
-              error(res, 500, "GitHub Error.");
+              sendError(res, 500, "GitHub Error.");
             });
         })
         .catch(a => {
           console.error(err.toString());
-          error(res, 500, "GitHub Error.");
+          sendError(res, 500, "GitHub Error.");
         });
-    else error(res, 400, "You need to be logged in.");
+    else sendError(res, 400, "You need to be logged in.");
   else res.redirect("/");
 });
 
@@ -235,19 +235,19 @@ app.get("/auth/discord/login", async (req, res) => {
               })
               .catch(err => {
                 console.error(err.toString());
-                error(res, 500, "Database Error.");
+                sendError(res, 500, "Database Error.");
               });
           })
           .catch(err => {
             console.error(err.toString());
-            error(res, 500, "Discord Error.");
+            sendError(res, 500, "Discord Error.");
           });
       })
       .catch(a => {
         console.error(a.toString());
-        error(res, 500);
+        sendError(res, 500);
       });
-  else error(res, "Discord Callback Broken.");
+  else sendError(res, "Discord Callback Broken.");
 });
 
 /**
@@ -309,20 +309,20 @@ app.get("/auth/discord/add", (req, res) => {
                 })
                 .catch(err => {
                   console.error(err.toString());
-                  error(res, 500, "Database Error.");
+                  sendError(res, 500, "Database Error.");
                 });
             })
             .catch(err => {
               console.error(err.toString());
-              error(res, 500, "Discord Error.");
+              sendError(res, 500, "Discord Error.");
             });
         })
         .catch(a => {
           console.error(a);
-          error(res, 500);
+          sendError(res, 500);
         });
-    else error(res, 401, "Log in first!");
-  else error(res, 400, "Discord Callback Broken!");
+    else sendError(res, 401, "Log in first!");
+  else sendError(res, 400, "Discord Callback Broken!");
 });
 
 app.get("/api/discord/getname", (req, res) => {
@@ -339,7 +339,7 @@ app.get("/api/discord/getname", (req, res) => {
       .catch(() => {
         res.send("ERROR!");
       });
-  } else error(res, 400, "Error.");
+  } else sendError(res, 400, "Error.");
 });
 
 //#endregion
@@ -359,7 +359,7 @@ app.get("/redirect/twitch/login", (req, res) =>
 );
 app.get("/redirect/twitch/add", (req, res) => {
   if (typeof req.session.userid === "undefined")
-    return error(res, 401, "Log In First!");
+    return sendError(res, 401, "Log In First!");
   twitchAdd.getAuthUrl(true, {}, req.session).then(url => res.redirect(url));
 });
 app.get("/auth/twitch/login", async (req, res) => {
@@ -375,17 +375,17 @@ app.get("/auth/twitch/login", async (req, res) => {
         })
         .catch(err => {
           console.error(err.toString());
-          error(res, 500, "Database Errror.");
+          sendError(res, 500, "Database Errror.");
         });
     })
     .catch(err => {
       console.error(err);
-      error(res, 500, "Authentication Error.");
+      sendError(res, 500, "Authentication Error.");
     });
 });
 app.get("/auth/twitch/add", async (req, res) => {
   if (typeof req.session.userid === "undefined")
-    return error(res, 401, "Log In First!");
+    return sendError(res, 401, "Log In First!");
   twitchLogin
     .verify(req.query, req.session)
     .then(data => {
@@ -397,12 +397,12 @@ app.get("/auth/twitch/add", async (req, res) => {
         })
         .catch(err => {
           console.error(err.toString());
-          error(res, 500, "Database Errror.");
+          sendError(res, 500, "Database Errror.");
         });
     })
     .catch(err => {
       console.error(err);
-      error(res, 500, "Authentication Error.");
+      sendError(res, 500, "Authentication Error.");
     });
 });
 let bearerKeyCache = null;
@@ -453,9 +453,9 @@ app.get("/api/twitch/getname", (req, res) => {
           });
       })
       .catch(err => {
-        error(res, 500, "Internal Twitch Error.");
+        sendError(res, 500, "Internal Twitch Error.");
       });
-  else error(res, 400);
+  else sendError(res, 400);
 });
 //#endregion
 //#region twitter
@@ -499,7 +499,7 @@ function twitter(method, oauth) {
         );
       })
       .catch(err => {
-        error(res, 500, "Twitter Error.");
+        sendError(res, 500, "Twitter Error.");
       });
   };
 }
@@ -584,7 +584,7 @@ function twitterCallback(req, res, oauth) {
       })
       .catch(err => {
         console.error(err);
-        error(res);
+        sendError(res);
       });
   });
 }
@@ -625,9 +625,9 @@ app.get("/api/twitter/getname", (req, res) => {
         res.send(data.data);
       })
       .catch(() => {
-        error(res, 500, "Twitter Error.");
+        sendError(res, 500, "Twitter Error.");
       });
-  } else error(res, 400, "Invalid Params.");
+  } else sendError(res, 400, "Invalid Params.");
 });
 
 //#endregion
@@ -638,13 +638,13 @@ app.get("/redirect/steam/login", (req, res) => {
   authlogin
     .getAuthUrl()
     .then(url => res.redirect(url))
-    .catch(() => error(res, 500, "Steam Error."));
+    .catch(() => sendError(res, 500, "Steam Error."));
 });
 app.get("/redirect/steam/add", (req, res) => {
   authadd
     .getAuthUrl()
     .then(url => res.redirect(url))
-    .catch(() => error(res, 500, "Steam Error."));
+    .catch(() => sendError(res, 500, "Steam Error."));
 });
 app.get("/auth/steam/login", (req, res) => {
   authlogin
@@ -659,12 +659,12 @@ app.get("/auth/steam/login", (req, res) => {
         })
         .catch(err => {
           console.error(err.toString());
-          error(res, 500, "Database Errror.");
+          sendError(res, 500, "Database Errror.");
         });
     })
     .catch(err => {
       console.error(err);
-      error(res, 400, "Steam Authentication Error.");
+      sendError(res, 400, "Steam Authentication Error.");
     });
 });
 app.get("/auth/steam/add", (req, res) => {
@@ -679,7 +679,7 @@ app.get("/auth/steam/add", (req, res) => {
           });
       })
       .catch(err => {
-        error(res, 400, "Steam Authentication Error.");
+        sendError(res, 400, "Steam Authentication Error.");
       });
 });
 app.get("/api/steam/getname", (req, res) => {
@@ -711,7 +711,7 @@ app.get("/redirect/youtube/login", (req, res) => {
 });
 app.get("/redirect/youtube/add", (req, res) => {
   if (typeof req.session.userid === "undefined")
-    return error(res, 401, "Log In First!");
+    return sendError(res, 401, "Log In First!");
   youtubeAdd
     .getAuthUrl("select_account", req.session)
     .then(url => {
@@ -729,16 +729,16 @@ app.get("/auth/youtube/login", (req, res) => {
           req.session.userid = userid;
           res.redirect("/youtube/" + data.id);
         })
-        .catch(() => error(res, 500, "Database Error"))
+        .catch(() => sendError(res, 500, "Database Error"))
     )
     .catch(err => {
       console.error(err);
-      error(res, 500, "YouTube Error");
+      sendError(res, 500, "YouTube Error");
     });
 });
 app.get("/auth/youtube/add", (req, res) => {
   if (typeof req.session.userid === "undefined")
-    return error(res, 401, "Log In First!");
+    return sendError(res, 401, "Log In First!");
   youtubeAdd
     .verify(req.query, req.session, ["id"])
     .then(data =>
@@ -747,12 +747,12 @@ app.get("/auth/youtube/add", (req, res) => {
         .then(() => res.redirect("/youtube/" + data.id))
         .catch(err => {
           console.error(err);
-          error(res, 500, "Database Error");
+          sendError(res, 500, "Database Error");
         })
     )
     .catch(err => {
       console.error(err);
-      error(res, 500, "YouTube Error");
+      sendError(res, 500, "YouTube Error");
     });
 });
 
@@ -848,7 +848,7 @@ function getData(from, name) {
                   })
                   .catch(err => {
                     console.error(err);
-                    error("Database Error.");
+                    sendError("Database Error.");
                   });
               })
               .catch(err => reject(err));
@@ -927,7 +927,7 @@ function getData(from, name) {
                     })
                     .catch(err => {
                       console.error(err);
-                      error("Database Error.");
+                      sendError("Database Error.");
                     });
                 })
                 .catch(err => reject("Steam Errror."));
@@ -1158,7 +1158,7 @@ app.get("/:from/:name", (req, res) => {
   getData(from, name)
     .then(data => {
       if (typeof data.dbdata === "undefined")
-        error(res, 404, "This account type isn't supported.");
+        sendError(res, 404, "This account type isn't supported.");
       else
         getProfile(data.dbdata, data.userdata).then(result => {
           res.render("person.ejs", {
@@ -1175,9 +1175,9 @@ app.get("/:from/:name", (req, res) => {
         });
     })
     .catch(err => {
-      if (typeof err === "string") error(res, 500, err);
+      if (typeof err === "string") sendError(res, 500, err);
     });
 });
-app.get("*", (_,res)=>error(res, 404, "Page Not Found!"));
+app.get("*", (_,res)=>sendError(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
