@@ -55,14 +55,11 @@ app
   .use(
     ironSession({
       cookieName: "movr-sid",
-      password: json("config/sessionpasswords.json")
-        .map(a => ({ sort: Math.random(), value: a }))
-        .sort((a, b) => a.sort - b.sort)
-        .map(a => a.value),
-      ttl: 24 * 60 * 60, // One Day
+      password: json("config/sessionpasswords.json"),
       cookieOptions: {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "lax",
+        secure: !testingenv,
       },
     })
   )
@@ -72,6 +69,7 @@ app
     const orig = req.session;
     req.session = new Proxy(req.session, {
       get(target, prop) {
+        if (prop === "destroySession") return orig.destroy.bind(orig);
         return target.get(prop);
       },
       set(target, prop, value) {
@@ -79,22 +77,20 @@ app
         return (saving = true);
       },
       deleteProperty(target, prop) {
-        target.unset(prop);
         return (saving = true);
       },
       has(target, prop) {
         return typeof target.get(prop) !== "undefined";
       },
-      defineProperty(target, prop, descriptor) {
-        saving = true;
-        return Reflect.defineProperty(target, prop, descriptor);
-      },
     });
-    req.session.destroySession = orig.destroy.bind(orig);
     const _end = res.end.bind(res);
     res.end = (...args) => {
-      if (saving === false) return _end(...args);
-      else orig.save().then(() => _end(...args));
+      if (saving)
+        orig
+          .save()
+          .then(() => _end(...args))
+          .catch(err => console.error(err) || _end(...args));
+      else _end(...args);
     };
     next();
   })
@@ -120,6 +116,8 @@ function sendError(res, code = 500, errtext = "Internal Error.") {
     error: errtext,
   });
 }
+
+app.get("/myid", (req, res) => res.send(req.session.userid.toString()));
 
 app.get("/", (req, res) => {
   res.render("index.ejs", {

@@ -8,20 +8,27 @@ const userFormat = {
   DISCORD_ID: null,
 };
 
-const newUser = () => {
-  const user = {};
-  Object.assign(user, userFormat);
-  return new Proxy(user, {
-    get(target, prop) {
-      return target[prop.toUpperCase()];
+const newUser = () =>
+  new Proxy(
+    {
+      ID: null,
+      YOUTUBE_ID: null,
+      TWITCH_ID: null,
+      TWITTER_ID: null,
+      GITHUB_ID: null,
+      STEAM_ID: null,
+      DISCORD_ID: null,
     },
-    set(target, prop, value) {
-      target[prop.toUpperCase()] = value;
-      return true;
-    },
-  });
-};
-
+    {
+      get(target, prop) {
+        return target[prop.toUpperCase()];
+      },
+      set(target, prop, value) {
+        target[prop.toUpperCase()] = value;
+        return true;
+      },
+    }
+  );
 /**
  * Not persistent.
  */

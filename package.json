@@ -2,7 +2,7 @@
   "name": "movr",
   "version": "1.0.0",
   "description": "Accountless way to connect accounts.",
-  "main": "main.mjs",
+  "main": "main.js",
   "scripts": {
     "start": "node main.js",
     "format": "echo Formatting... && prettier -w --arrow-parens avoid . && echo Formatted."
