@@ -1,15 +1,16 @@
-import json from "./jsonimport.js";
-import ax from "axios";
-import oauth from "oauth";
-import session from "express-session";
-import crypto from "crypto";
-import { App } from "@tinyhttp/app";
-import sirv from "sirv";
-import ejs from "ejs";
-import SteamAuth from "@tbhmens/steam-auth";
-import Database from "./db2.js";
-import TwitchAuth from "@tbhmens/twitch-auth";
 import { YoutubeAuth } from "@tbhmens/google-auth";
+import SteamAuth from "@tbhmens/steam-auth";
+import TwitchAuth from "@tbhmens/twitch-auth";
+import { App } from "@tinyhttp/app";
+import { logger } from "@tinyhttp/logger";
+import ax from "axios";
+import crypto from "crypto";
+import ejs from "ejs";
+import session from "express-session";
+import oauth from "oauth";
+import sirv from "sirv";
+import Database from "./db2.js";
+import json from "./jsonimport.js";
 const axios = ax.create({
   headers: {
     "User-Agent": "MOVR",
@@ -43,21 +44,32 @@ if (testingenv) url = "http://localhost/";
 const db2config = json("config/db2config.json");
 let database = new Database(db2config.tablename, testingenv);
 
-app.engine("ejs", ejs.renderFile);
-app.set("ext", "ejs");
-app.use(sirv("public"));
-app.use(
-  session({
-    secret: crypto.randomBytes(64).toString("utf16le"),
-    resave: false,
-    saveUninitialized: false,
-    sameSite: "strict",
-    name: "movr-sid",
-    cookie: {
-      httpOnly: true,
-    },
-  })
-);
+app
+  .engine("ejs", ejs.renderFile)
+  .set("ext", "ejs")
+  .use(sirv("public"))
+  .use(
+    session({
+      secret: crypto.randomBytes(64).toString("utf16le"),
+      resave: false,
+      saveUninitialized: false,
+      sameSite: "strict",
+      name: "movr-sid",
+      cookie: {
+        httpOnly: true,
+      },
+    })
+  )
+  .use(
+    logger({
+      emoji: testingenv,
+      methods: ["GET", "POST"],
+      output: {
+        callback: console.log,
+        color: testingenv,
+      },
+    })
+  );
 
 /**
  * Sends error.ejs to the client with the specified error text
@@ -117,7 +129,6 @@ app.get("/auth/github/login", async (req, res) => {
               .createAccountWith("github_id", id)
               .then(userid => {
                 req.session.userid = userid;
-                console.log(userid + " logged in!");
                 res.redirect("/id/" + userid);
               })
               .catch(err => {
@@ -230,7 +241,6 @@ app.get("/auth/discord/login", async (req, res) => {
               .createAccountWith("discord_id", id)
               .then(userid => {
                 req.session.userid = userid;
-                console.log(userid + " logged in!");
                 res.redirect("/id/" + userid);
               })
               .catch(err => {
@@ -370,7 +380,6 @@ app.get("/auth/twitch/login", async (req, res) => {
         .createAccountWith("twitch_id", data.sub)
         .then(userid => {
           req.session.userid = userid;
-          console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
         .catch(err => {
@@ -392,7 +401,6 @@ app.get("/auth/twitch/add", async (req, res) => {
       database
         .addToAccount("twitch_id", data.sub)
         .then(() => {
-          console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
         .catch(err => {
@@ -654,7 +662,6 @@ app.get("/auth/steam/login", (req, res) => {
         .createAccountWith("steam_id", steamId)
         .then(userid => {
           req.session.userid = userid;
-          console.log(userid + " logged in!");
           res.redirect("/id/" + userid);
         })
         .catch(err => {
@@ -1178,6 +1185,6 @@ app.get("/:from/:name", (req, res) => {
       if (typeof err === "string") sendError(res, 500, err);
     });
 });
-app.get("*", (_,res)=>sendError(res, 404, "Page Not Found!"));
+app.get("*", (_, res) => sendError(res, 404, "Page Not Found!"));
 
 app.listen(port, () => console.log(`Movr listening on port ${port}!`));
