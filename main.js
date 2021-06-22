@@ -4,13 +4,13 @@ import TwitchAuth from "@tbhmens/twitch-auth";
 import { App } from "@tinyhttp/app";
 import { logger } from "@tinyhttp/logger";
 import ax from "axios";
-import crypto from "crypto";
 import ejs from "ejs";
-import session from "express-session";
+import { ironSession } from "next-iron-session";
 import oauth from "oauth";
 import sirv from "sirv";
 import Database from "./db2.js";
 import json from "./jsonimport.js";
+import TestingDB from "./testingdb.js";
 const axios = ax.create({
   headers: {
     "User-Agent": "MOVR",
@@ -41,25 +41,63 @@ let testingenv = process.env.LOCALTESTINGENVIRONMENT === "T";
 let url = new URL(movrconfig.url).toString();
 if (testingenv) url = "http://localhost/";
 
-const db2config = json("config/db2config.json");
-let database = new Database(db2config.tablename, testingenv);
+let database;
+if (testingenv) database = new TestingDB();
+else {
+  const db2config = json("config/db2config.json");
+  database = new Database(db2config.tablename, testingenv);
+}
 
 app
   .engine("ejs", ejs.renderFile)
   .set("ext", "ejs")
   .use(sirv("public"))
   .use(
-    session({
-      secret: crypto.randomBytes(64).toString("utf16le"),
-      resave: false,
-      saveUninitialized: false,
-      sameSite: "strict",
-      name: "movr-sid",
-      cookie: {
+    ironSession({
+      cookieName: "movr-sid",
+      password: json("config/sessionpasswords.json")
+        .map(a => ({ sort: Math.random(), value: a }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(a => a.value),
+      ttl: 24 * 60 * 60, // One Day
+      cookieOptions: {
         httpOnly: true,
+        sameSite: "strict",
       },
     })
   )
+  // Middleware that makes ironSession behave similarly to express-session
+  .use((req, res, next) => {
+    let saving = false;
+    const orig = req.session;
+    req.session = new Proxy(req.session, {
+      get(target, prop) {
+        return target.get(prop);
+      },
+      set(target, prop, value) {
+        target.set(prop, value);
+        return (saving = true);
+      },
+      deleteProperty(target, prop) {
+        target.unset(prop);
+        return (saving = true);
+      },
+      has(target, prop) {
+        return typeof target.get(prop) !== "undefined";
+      },
+      defineProperty(target, prop, descriptor) {
+        saving = true;
+        return Reflect.defineProperty(target, prop, descriptor);
+      },
+    });
+    req.session.destroySession = orig.destroy.bind(orig);
+    const _end = res.end.bind(res);
+    res.end = (...args) => {
+      if (saving === false) return _end(...args);
+      else orig.save().then(() => _end(...args));
+    };
+    next();
+  })
   .use(
     logger({
       emoji: testingenv,
@@ -399,9 +437,9 @@ app.get("/auth/twitch/add", async (req, res) => {
     .verify(req.query, req.session)
     .then(data => {
       database
-        .addToAccount("twitch_id", data.sub)
+        .addToAccount("twitch_id", req.session.userid, data.sub)
         .then(() => {
-          res.redirect("/id/" + userid);
+          res.redirect("/id/" + req.session.userid);
         })
         .catch(err => {
           console.error(err.toString());
@@ -600,9 +638,10 @@ app.get("/auth/twitter/login", async (req, res) => {
   twitterCallback(req, res, loginOauth).then(user => {
     delete req.session.twitterOauthRequestToken;
     delete req.session.twitterOauthRequestTokenSecret;
-    database
-      .createAccountWith("twitter_id", user.user_id)
-      .then(() => res.redirect("/twitter/" + user.screen_name));
+    database.createAccountWith("twitter_id", user.user_id).then(userid => {
+      req.session.userid = userid;
+      res.redirect("/twitter/" + user.screen_name);
+    });
   });
 });
 app.get("/auth/twitter/add", async (req, res) => {
@@ -1096,9 +1135,10 @@ function getProfile(dbdata, userdata) {
                   .then(result => {
                     let finalObject = {};
                     finalObject[sort] = {
-                      name: result.data.display_name,
-                      html_url: "https://twitch.tv/" + result.data.login,
-                      picture: result.data.profile_image_url,
+                      name: result.data.data[0].display_name,
+                      html_url:
+                        "https://twitch.tv/" + result.data.data[0].login,
+                      picture: result.data.data[0].profile_image_url,
                     };
                     resolve(finalObject);
                   })
