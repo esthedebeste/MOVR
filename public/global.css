@@ -8,6 +8,7 @@
   --githubbg: #fff;
   --githublogo: url("/assets/githublogo.svg");
   --githubtext: url("/assets/githubtext.svg");
+  font-size: min(1em, 3vw);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -150,11 +151,11 @@ a {
   content: var(--youtubelogo);
 }
 
-.discord {
+.accountoption.discord {
   background-color: var(--discordbg);
 }
 
-.github {
+.accountoption.github {
   background-color: var(--githubbg);
 }
 
