@@ -1,5 +1,7 @@
 # MOVR
 
+[![MOVR Status](https://img.shields.io/website?down_color=red&down_message=offline&label=MOVR%20IS&style=for-the-badge&up_message=online&url=https%3A%2F%2Fmovr.eu-gb.mybluemix.net%2F)](https://movr.eu-gb.mybluemix.net/)
+
 Movr is an accountless way to connect accounts. That means: no password to remember.
 
 ## Instructions

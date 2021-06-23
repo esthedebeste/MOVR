@@ -45,8 +45,8 @@ export default class TestingDB {
    */
 
   async createAccountWith(type, id) {
-    let account = this.getAccount(type, id, "ID");
-    if (typeof account !== "undefined") return account;
+    let account = await this.getAccount(type, id, "ID");
+    if (account != null) return account;
     let user = newUser();
     user.ID = this.users.length;
     user[type] = id;
@@ -62,6 +62,7 @@ export default class TestingDB {
    * @returns {void} Nothing.
    */
   async addToAccount(type, movrid, id) {
+    this.users = this.users.filter(value => value[type.toUpperCase()] == id);
     this.users[movrid][type.toUpperCase()] = id;
   }
 
@@ -72,7 +73,8 @@ export default class TestingDB {
    * @returns {Object.<string, number | null>} The IDs
    */
   async getUser(type, id) {
-    return this.users.filter(value => value[type.toUpperCase()] == id)[0];
+    const user = this.users.filter(value => value[type.toUpperCase()] == id)[0];
+    return user == null ? undefined : user;
   }
 
   /**
@@ -83,8 +85,7 @@ export default class TestingDB {
    * @returns {number | null} The id of that 3rd party provider, or null if undefined
    */
   async getAccount(gettype, getvalue, returntype) {
-    return this.users.filter(
-      value => value[gettype.toUpperCase()] == getvalue
-    )[0][returntype.toUpperCase()];
+    const user = await this.getUser(gettype, getvalue);
+    return user == null ? undefined : user[returntype.toUpperCase()];
   }
 }

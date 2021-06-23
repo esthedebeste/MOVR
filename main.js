@@ -51,7 +51,11 @@ else {
 app
   .engine("ejs", ejs.renderFile)
   .set("ext", "ejs")
-  .use(sirv("public"))
+  .use(
+    sirv("public", {
+      etag: true,
+    })
+  )
   .use(
     ironSession({
       cookieName: "movr-sid",
@@ -65,7 +69,7 @@ app
   )
   // Middleware that makes ironSession behave similarly to express-session
   .use((req, res, next) => {
-    let saving = false;
+    let modified = false;
     const orig = req.session;
     req.session = new Proxy(req.session, {
       get(target, prop) {
@@ -74,10 +78,11 @@ app
       },
       set(target, prop, value) {
         target.set(prop, value);
-        return (saving = true);
+        return (modified = true);
       },
       deleteProperty(target, prop) {
-        return (saving = true);
+        target.unset(prop);
+        return (modified = true);
       },
       has(target, prop) {
         return typeof target.get(prop) !== "undefined";
@@ -85,7 +90,7 @@ app
     });
     const _end = res.end.bind(res);
     res.end = (...args) => {
-      if (saving)
+      if (modified)
         orig
           .save()
           .then(() => _end(...args))
