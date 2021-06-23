@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/global.css" />
     <title><%=Object.values(precachedaccount)[0].name%> on MOVR.</title>
     <meta name="twitter:card" content="summary" />
@@ -27,9 +27,15 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="<%=url%><%=from%>/<%=name%>" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-    <meta id="movrdata" data-userid="<%=sessionuserid%>" data-ids="<%=JSON.stringify(ids)%>" data-predata="<%=JSON.stringify(precachedaccount)%>" data-ghid="<%=ghid%>" data-discordid="<%=discordid%>" />
-    <script src="/progbg.js"></script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta
+      id="movrdata"
+      data-userid="<%=sessionuserid%>"
+      data-ids="<%=JSON.stringify(ids)%>"
+      data-predata="<%=JSON.stringify(precachedaccount)%>"
+      data-ghid="<%=ghid%>"
+      data-discordid="<%=discordid%>"
+    />
     <script src="/animate.js"></script>
     <script src="/person.js"></script>
   </head>
@@ -40,5 +46,6 @@
         <div id="accounts"></div>
       </div>
     </div>
+    <script src="/progbg.js"></script>
   </body>
 </html>

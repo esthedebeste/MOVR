@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="global.css" />
     <title>MOVR.</title>
     <meta name="twitter:card" content="summary" />
@@ -24,37 +24,29 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="<%=url%>" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
 
   <body>
     <div id="loginbody">
       <div id="accountparent">
         <div id="login">
-          Log in with: <br />
+          <span id="loginwithtext">Log in with:</span> <br />
           <a
-            class="accountoption"
+            class="accountoption github"
             href="https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= ghid %>&redirect_uri=<%=url%>auth/github/login"
-            style="filter: invert()"
           >
-            <img src="assets/githublogo.svg" alt="GitHub logo" class="logo" />
-            <img
-              src="assets/githubtext.svg"
-              alt="GitHub"
-              class="signinwith"
-              style="max-width: 8rem"
-            />
+            <img alt="GitHub logo" class="logo github" />
+            <img alt="GitHub" class="signinwith github" />
           </a>
           <a
-            class="accountoption"
+            class="accountoption discord"
             href="https://discord.com/api/oauth2/authorize?client_id=<%= discordid %>&redirect_uri=<%= encodeURIComponent(url) %>auth/discord/login&response_type=code&scope=identify&prompt=consent"
-            style="background-color: #23272a"
           >
             <img
-              class="signinwith"
+              class="signinwith discord"
               alt="Discord"
               src="/assets/discord.svg"
-              style="filter: invert()"
             />
           </a>
           <a
@@ -69,7 +61,11 @@
               src="/assets/twitchtext.svg"
             />
           </a>
-          <a class="accountoption" href="/redirect/twitter/login">
+          <a
+            class="accountoption"
+            href="/redirect/twitter/login"
+            style="background-color: #fff"
+          >
             <img
               class="signinwith"
               alt="Sign in with Twitter"
@@ -87,16 +83,11 @@
               src="/assets/signinthroughsteam.png"
             />
           </a>
-          <a
-            class="accountoption"
-            href="/redirect/youtube/login"
-            style="background-color: #fff"
-          >
+          <a class="accountoption youtube" href="/redirect/youtube/login">
             <img
               style="padding-left: 1rem; padding-right: 1rem"
-              class="signinwith"
+              class="signinwith youtube"
               alt="YouTube"
-              src="/assets/youtubelogo.svg"
             />
           </a>
         </div>
