@@ -1,33 +1,37 @@
 {
-  "name": "movr",
-  "version": "1.0.0",
-  "description": "Accountless way to connect accounts.",
-  "main": "main.js",
-  "scripts": {
-    "start": "node main.js",
-    "format": "echo Formatting... && prettier -w --arrow-parens avoid . && echo Formatted."
-  },
-  "author": "tbhmens",
-  "license": "CC0-1.0",
-  "dependencies": {
-    "@tbhmens/google-auth": "^1.0.0",
-    "@tbhmens/steam-auth": "^1.0.6",
-    "@tbhmens/twitch-auth": "^1.0.3",
-    "@tinyhttp/app": "^1.3.10",
-    "@tinyhttp/logger": "^1.3.0",
-    "axios": "^0.21.1",
-    "ejs": "^3.1.6",
-    "ibm_db": "^2.7.4",
-    "next-iron-session": "^4.2.0",
-    "oauth": "^0.9.15",
-    "sirv": "^1.0.12",
-    "sqlstring": "^2.3.2"
-  },
-  "engines": {
-    "node": "16.3.0"
-  },
-  "type": "module",
-  "devDependencies": {
-    "prettier": "latest"
-  }
+	"name": "movr",
+	"version": "1.0.0",
+	"description": "Accountless way to connect accounts.",
+	"main": "./src/main.js",
+	"scripts": {
+		"start": "node --experimental-json-modules .",
+		"dev": "node --experimental-json-modules . --dev",
+		"format": "echo Formatting... && prettier -w --arrow-parens avoid . && echo Formatted."
+	},
+	"author": "tbhmens",
+	"license": "CC0-1.0",
+	"dependencies": {
+		"@tbhmens/google-auth": "^1.0.0",
+		"@tbhmens/steam-auth": "^1.0.6",
+		"@tbhmens/twitch-auth": "^1.0.3",
+		"@tinyhttp/logger": "^1.3.0",
+		"axios": "^0.21.1",
+		"coggers": "^1.4.0",
+		"ejs": "^3.1.6",
+		"ibm_db": "^2.7.4",
+		"next-iron-session": "^4.2.0",
+		"oauth": "^0.9.15",
+		"sirv": "^1.0.12",
+		"sqlstring": "^2.3.2"
+	},
+	"engines": {
+		"node": ">=16.x.x"
+	},
+	"type": "module",
+	"devDependencies": {
+		"@babel/eslint-parser": "^7.15.8",
+		"eslint": "^7.32.0",
+		"eslint-prettier-config": "^1.0.1",
+		"prettier": "^2.4.1"
+	}
 }

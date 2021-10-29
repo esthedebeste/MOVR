@@ -1,180 +1,175 @@
 :root {
-  --fg: #000;
-  --bg: #fff;
-  --youtubebg: #fff;
-  --youtubelogo: url("/assets/youtubelogo.svg");
-  --youtubeicon: url("/assets/youtubeicon.svg");
-  --discordbg: #5865f2;
-  --githubbg: #fff;
-  --githublogo: url("/assets/githublogo.svg");
-  --githubtext: url("/assets/githubtext.svg");
-  font-size: min(1em, 3vw);
+	--fg: #000;
+	--bg: #fff;
+	--youtubebg: #fff;
+	--youtubelogo: url("/assets/youtubelogo.svg");
+	--youtubeicon: url("/assets/youtubeicon.svg");
+	--discordbg: #5865f2;
+	--githubbg: #fff;
+	--githublogo: url("/assets/githublogo.svg");
+	--githubtext: url("/assets/githubtext.svg");
+	font-size: min(1em, 3vw);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fg: #fff;
-    --bg: #241123;
-    --youtubebg: #282828;
-    --youtubelogo: url("/assets/youtubelogodark.svg");
-    --youtubeicon: url("/assets/youtubeicondark.svg");
-    --discordbg: #23272a;
-    --githubbg: #000;
-    --githublogo: url("/assets/githublogodark.svg");
-    --githubtext: url("/assets/githubtextdark.svg");
-  }
-  .logo:not(.github) {
-    filter: invert() brightness(2);
-  }
+	:root {
+		--fg: #fff;
+		--bg: #241123;
+		--youtubebg: #282828;
+		--youtubelogo: url("/assets/youtubelogodark.svg");
+		--youtubeicon: url("/assets/youtubeicondark.svg");
+		--discordbg: #23272a;
+		--githubbg: #000;
+		--githublogo: url("/assets/githublogodark.svg");
+		--githubtext: url("/assets/githubtextdark.svg");
+	}
+	.logo:not(.github) {
+		filter: invert() brightness(2);
+	}
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-  background-color: var(--bg);
-  color: var(--fg);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+		Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+	background-color: var(--bg);
+	color: var(--fg);
+	background-position: center;
+	background-size: 100vw 100vh;
+	height: 100vh;
+	width: 100vw;
+	margin: 0;
 }
 
 a {
-  text-decoration-line: none;
-}
-
-.progbg {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  background-size: 100vmax 100vmax;
-  background-position: center;
+	text-decoration-line: none;
 }
 
 #personbody {
-  top: 0vh;
-  bottom: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+	top: 0vh;
+	bottom: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 #loginbody {
-  top: 0vh;
-  bottom: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+	top: 0vh;
+	bottom: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 #login {
-  font-size: 3rem;
-  color: #fff;
+	font-size: 3rem;
+	color: #fff;
 }
 
 #loginwithtext {
-  color: var(--fg);
-  text-shadow: var(--bg) 0 0 0.5em, var(--bg) 0 0 0.5em, var(--bg) 0 0 0.5em,
-    var(--bg) 0 0 0.5em;
+	color: var(--fg);
+	text-shadow: var(--bg) 0 0 0.5em, var(--bg) 0 0 0.5em, var(--bg) 0 0 0.5em,
+		var(--bg) 0 0 0.5em;
 }
 
 #accountparent {
-  display: flex;
-  position: absolute;
-  flex: 1 1 0;
-  top: 0vh;
-  bottom: 100vh;
-  height: 100vh;
-  padding-left: 10vw;
-  padding-right: 10vw;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+	display: flex;
+	position: absolute;
+	flex: 1 1 0;
+	top: 0vh;
+	bottom: 100vh;
+	height: 100vh;
+	padding-left: 10vw;
+	padding-right: 10vw;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 .accountoption {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  height: 4rem;
-  font-size: 2rem;
-  background-color: var(--bg);
-  color: var(--fg);
-  padding: 0.5rem;
-  border-radius: 2rem;
-  margin-top: 1rem;
-  text-decoration: none;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	height: 4rem;
+	font-size: 2rem;
+	background-color: var(--bg);
+	color: var(--fg);
+	padding: 0.5rem;
+	border-radius: 2rem;
+	margin-top: 1rem;
+	text-decoration: none;
 }
 
 .account {
-  font-size: 2rem;
-  background-color: var(--bg);
-  color: var(--fg);
-  /* border: 0.5rem solid #f00;*/
-  padding: 1rem;
-  border-radius: 2rem;
-  margin-bottom: 2rem;
+	font-size: 2rem;
+	background-color: var(--bg);
+	color: var(--fg);
+	/* border: 0.5rem solid #f00;*/
+	padding: 1rem;
+	border-radius: 2rem;
+	margin-bottom: 2rem;
 }
 
 .overflows {
-  overflow: visible;
+	overflow: visible;
 }
 
 .logo {
-  display: inline;
-  padding-right: 0.25em;
-  padding-left: 0.25em;
-  width: 4rem;
-  height: 4rem;
+	display: inline;
+	padding-right: 0.25em;
+	padding-left: 0.25em;
+	width: 4rem;
+	height: 4rem;
 }
 
 .inline {
-  display: inline;
+	display: inline;
 }
 
 .signinwith {
-  padding-right: 0.25em;
-  padding-left: 0.25em;
-  max-width: 14rem;
-  margin: auto;
+	padding-right: 0.25em;
+	padding-left: 0.25em;
+	max-width: 14rem;
+	margin: auto;
 }
 
 .accountoption.youtube {
-  background-color: var(--youtubebg);
+	background-color: var(--youtubebg);
 }
 
 .logo.youtube {
-  content: var(--youtubeicon);
+	content: var(--youtubeicon);
 }
 
 .signinwith.youtube {
-  content: var(--youtubelogo);
+	content: var(--youtubelogo);
 }
 
 .accountoption.discord {
-  background-color: var(--discordbg);
+	background-color: var(--discordbg);
 }
 
 .accountoption.github {
-  background-color: var(--githubbg);
+	background-color: var(--githubbg);
 }
 
 .logo.github {
-  content: var(--githublogo);
+	content: var(--githublogo);
 }
 
 .signinwith.github {
-  content: var(--githubtext);
-  max-width: 8rem;
+	content: var(--githubtext);
+	max-width: 8rem;
 }
 
 .center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .smallcaps {
-  font-variant: small-caps;
-  font-size: 1.1rem;
+	font-variant: small-caps;
+	font-size: 1.1rem;
 }
