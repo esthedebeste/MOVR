@@ -1,7 +1,8 @@
 import { blueprint } from "coggers";
 import oauth from "oauth";
+import { fetch } from "undici";
 import twittercreds from "../../config/twittercreds.json";
-import { axios, database, url } from "../utils.js";
+import { database, url } from "../utils.js";
 
 const loginOauth = new oauth.OAuth(
 	"https://twitter.com/oauth/request_token",
@@ -171,14 +172,16 @@ export const api = blueprint({
 		async $get(req, res) {
 			if (!isNaN(req.query.id)) {
 				try {
-					const { data } = await axios.get(
+					const result = await fetch(
 						`https://api.twitter.com/1.1/users/show.json?user_id=${req.query.id}&include_entities=false`,
 						{
 							headers: {
-								authorization: `Bearer ${twittercreds.bearertoken}`,
+								Authorization: `Bearer ${twittercreds.bearertoken}`,
+								"User-Agent": "MOVR",
 							},
 						}
 					);
+					const data = await result.json();
 					data.html_url = "https://twitter.com/" + data.screen_name;
 					res.json(data);
 				} catch (err) {
@@ -191,7 +194,7 @@ export const api = blueprint({
 });
 export const embed = async name => {
 	try {
-		const { data } = await axios.get(
+		const result = await fetch(
 			`https://api.twitter.com/1.1/users/show.json?screen_name=${name}&include_entities=false`,
 			{
 				headers: {
@@ -199,6 +202,7 @@ export const embed = async name => {
 				},
 			}
 		);
+		const data = await result.json();
 		data.html_url = "https://twitter.com/" + data.screen_name;
 		data.picture = data.profile_image_url_https.replace("_normal", "");
 		data.entities = {};

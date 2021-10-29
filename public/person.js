@@ -21,10 +21,9 @@ const logos = {
 
 const getJSON = url =>
 	fetch(url, { headers: { accept: "application/json" } }).then(a => a.json());
-const promisify = Promise.resolve;
 
 function getUsername(type, id) {
-	if (type in predata) return promisify(predata[type]);
+	if (type in predata) return Promise.resolve(predata[type]);
 
 	if (type === "github")
 		// Get github straight from github's public API
@@ -54,9 +53,7 @@ for (let account in ids) {
 	let tr1 = document.createElement("tr");
 	{
 		let tdlogo = document.createElement("td");
-		let logo = document.createElement("svg");
-		tdlogo.appendChild(logo);
-		logo.outerHTML = logos[account];
+		tdlogo.innerHTML = logos[account];
 		tdlogo.rowSpan = 2;
 		tr1.appendChild(tdlogo);
 	}

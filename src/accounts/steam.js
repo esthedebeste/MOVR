@@ -1,7 +1,8 @@
 import SteamAuth from "@tbhmens/steam-auth";
 import { blueprint } from "coggers";
+import { fetch } from "undici";
 import steamcreds from "../../config/steamcreds.json";
-import { axios, database, url } from "../utils.js";
+import { database, url } from "../utils.js";
 
 const authlogin = new SteamAuth(url + "auth/steam/login", url);
 const authadd = new SteamAuth(url + "auth/steam/add", url);
@@ -71,10 +72,12 @@ export const api = blueprint({
 		async $get(req, res) {
 			if (isNaN(req.query.id)) return res.error(400, "Error!");
 			try {
-				const result = await axios.get(
-					`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.query.id}`
+				const result = await fetch(
+					`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${req.query.id}`,
+					{ headers: { "User-Agent": "MOVR" } }
 				);
-				const player = result.data.response.players[0];
+				const data = await result.json();
+				const player = data.response.players[0];
 				res.json({
 					name: player.personaname,
 					html_url: player.profileurl,
@@ -89,14 +92,20 @@ export const api = blueprint({
 
 export const embed = async name => {
 	try {
-		const { data: urlResult } = await axios.get(
-			`https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${steamcreds.key}&vanityurl=${name}&url_type=1`
+		const result = await fetch(
+			`https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${steamcreds.key}&vanityurl=${name}&url_type=1`,
+			{ headers: { "User-Agent": "MOVR" } }
 		);
-		if (urlResult.data.response.success === 1) {
+		const data = await result.json();
+		const success = data.response.success;
+		const steamid = data.response.steamid;
+		if (success === 1) {
 			try {
-				const { data } = await axios.get(
-					`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${urlResult.data.response.steamid}`
+				const result = await fetch(
+					`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${steamcreds.key}&steamids=${steamid}`,
+					{ headers: { "User-Agent": "MOVR" } }
 				);
+				const data = await result.json();
 				const player = data.response.players[0];
 				try {
 					const user = await database.getUser("STEAM_ID", player.steamid);
@@ -120,8 +129,7 @@ export const embed = async name => {
 				console.error(err);
 				return "Steam Error.";
 			}
-		} else if (urlResult.data.response.success === 42)
-			return "This account doesn't exist.";
+		} else if (success === 42) return "This account doesn't exist.";
 		else return "Steam Error.";
 	} catch (err) {
 		console.error(err);

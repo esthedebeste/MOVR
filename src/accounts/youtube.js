@@ -1,7 +1,8 @@
 import { YoutubeAuth } from "@tbhmens/google-auth";
 import { blueprint } from "coggers";
+import { fetch } from "undici";
 import googlecreds from "../../config/googlecreds.json";
-import { axios, database, url } from "../utils.js";
+import { database, url } from "../utils.js";
 
 const youtubeLogin = new YoutubeAuth(
 	googlecreds.web.client_id,
@@ -88,9 +89,11 @@ export const api = blueprint({
 		async $get(req, res) {
 			if (req.query.id == null) return res.error(400);
 			try {
-				const { data } = await axios.get(
-					`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${req.query.id}&key=${googlecreds.api_key}`
+				const result = await fetch(
+					`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${req.query.id}&key=${googlecreds.api_key}`,
+					{ headers: { "User-Agent": "MOVR" } }
 				);
+				const data = await result.json();
 				const channel = data.items[0];
 				res.json({
 					name: channel.snippet.title,
@@ -105,14 +108,16 @@ export const api = blueprint({
 });
 export const embed = async name => {
 	try {
-		const { data } = await axios.get(
+		const result = await fetch(
 			`https://www.googleapis.com/youtube/v3/channels?part=snippet&part=id&id=${name}&key=${googlecreds.api_key}`,
 			{
 				headers: {
 					Accept: "application/json",
+					"User-Agent": "MOVR",
 				},
 			}
 		);
+		const data = await result.json();
 		if (data.pageInfo.totalResults < 1) return "This account doesn't exist.";
 		try {
 			const user = await database.getUser("YOUTUBE_ID", name);

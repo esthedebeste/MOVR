@@ -1,6 +1,7 @@
 import { blueprint } from "coggers";
+import { fetch } from "undici";
 import discordcreds from "../../config/discordcreds.json";
-import { axios, database, url } from "../utils.js";
+import { database, url } from "../utils.js";
 
 /**
  * @param {string} code - Code from the discord redirect
@@ -8,17 +9,15 @@ import { axios, database, url } from "../utils.js";
  * @returns {Promise<{access_token: string}>} A discord token
  */
 async function loginToDiscord(code, redirect) {
-	let data = `client_id=${discordcreds.id}&client_secret=${discordcreds.secret}&grant_type=authorization_code&code=${code}&redirect_uri=${redirect}&scope=identify`;
-	const result = await axios.post(
-		"https://discord.com/api/v8/oauth2/token",
-		data,
-		{
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-			},
-		}
-	);
-	return result.data;
+	const result = await fetch("https://discord.com/api/v8/oauth2/token", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/x-www-form-urlencoded",
+			"User-Agent": "MOVR",
+		},
+		body: `client_id=${discordcreds.id}&client_secret=${discordcreds.secret}&grant_type=authorization_code&code=${code}&redirect_uri=${redirect}&scope=identify`,
+	});
+	return result.json();
 }
 
 /**
@@ -27,11 +26,13 @@ async function loginToDiscord(code, redirect) {
  * @returns {Promise<number>} Discord ID
  */
 async function getDiscordUserId(token) {
-	const { data } = await axios.get("https://discord.com/api/users/@me", {
+	const result = await fetch("https://discord.com/api/users/@me", {
 		headers: {
 			Authorization: `Bearer ${token}`,
+			"User-Agent": "MOVR",
 		},
 	});
+	const data = await result.json();
 	return data.id;
 }
 
@@ -98,13 +99,16 @@ export const api = blueprint({
 		async $get(req, res) {
 			const id = parseInt(req.query.id);
 			if (isNaN(id)) return res.error(400, "Error.");
-			const {
-				data: { username, discriminator },
-			} = await axios.get(`https://discord.com/api/v8/users/${req.query.id}`, {
-				headers: {
-					Authorization: `Bot ${discordcreds.bot}`,
-				},
-			});
+			const user = await fetch(
+				`https://discord.com/api/v8/users/${req.query.id}`,
+				{
+					headers: {
+						Authorization: `Bot ${discordcreds.bot}`,
+						"User-Agent": "MOVR",
+					},
+				}
+			);
+			const { username, discriminator } = await user.json();
 			const code = username + "#" + discriminator;
 			req.format({
 				json: () =>

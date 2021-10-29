@@ -1,6 +1,7 @@
 import { blueprint } from "coggers";
+import { fetch } from "undici";
 import ghcreds from "../../config/ghclientcreds.json";
-import { axios, database, url } from "../utils.js";
+import { database, url } from "../utils.js";
 export const auth = blueprint({
 	login: {
 		async $get(req, res) {
@@ -61,20 +62,19 @@ export const auth = blueprint({
  * @returns {Promise<string>} GitHub Access token
  */
 async function loginToGithub(code) {
-	const result = await axios.post(
-		"https://github.com/login/oauth/access_token",
-		{
+	const result = await fetch("https://github.com/login/oauth/access_token", {
+		method: "POST",
+		headers: {
+			Accept: "application/json",
+			"User-Agent": "MOVR",
+		},
+		body: JSON.stringify({
 			client_id: ghcreds.id,
 			client_secret: ghcreds.secret,
 			code,
-		},
-		{
-			headers: {
-				Accept: "application/json",
-			},
-		}
-	);
-	return result.data;
+		}),
+	});
+	return result.json();
 }
 
 /**
@@ -83,19 +83,26 @@ async function loginToGithub(code) {
  * @returns {Promise<object>} GitHub user profile
  */
 async function getGithubUserId(token) {
-	const result = await axios.get("https://api.github.com/user", {
+	const result = await fetch("https://api.github.com/user", {
 		headers: {
 			Authorization: `Bearer ${token}`,
+			"User-Agent": "MOVR",
 		},
 	});
-	return result.data.id;
+	const data = await result.json();
+	return data.id;
 }
 
 export async function embed(name) {
 	try {
-		const { data } = await axios.get("https://api.github.com/users/" + name, {
-			auth: ghcreds.tokenauth,
+		const result = await fetch("https://api.github.com/users/" + name, {
+			headers: {
+				Username: ghcreds.tokenauth.username,
+				Password: ghcreds.tokenauth.password,
+				"User-Agent": "MOVR",
+			},
 		});
+		const data = await result.json();
 		data.picture = data.avatar_url;
 		try {
 			const user = await database.getUser("github_id", data.id);

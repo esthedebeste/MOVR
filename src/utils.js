@@ -1,12 +1,6 @@
-import ax from "axios";
 import movrconfig from "../config/movrconfig.json";
 import Database from "./database/db2.js";
 import TestingDB from "./database/testingdb.js";
-export const axios = ax.create({
-	headers: {
-		"User-Agent": "MOVR",
-	},
-});
 export const devenv = process.argv.includes("--dev");
 // Format to a valid URL which ends with a /
 export const url = new URL(
