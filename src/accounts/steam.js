@@ -15,6 +15,7 @@ export const auth = blueprint({
 				try {
 					const userid = await database.createAccountWith("steam_id", steamId);
 					req.session.userid = userid;
+					res.saveSession();
 					res.redirect("/id/" + userid);
 				} catch (err) {
 					console.error(err);

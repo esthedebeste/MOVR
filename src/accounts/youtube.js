@@ -25,6 +25,7 @@ export const auth = blueprint({
 				try {
 					const userid = await database.createAccountWith("youtube_id", id);
 					req.session.userid = userid;
+					res.saveSession();
 					res.redirect("/youtube/" + id);
 				} catch (err) {
 					console.error(err);
@@ -64,6 +65,7 @@ export const redirect = blueprint({
 					"select_account",
 					req.session
 				);
+				res.saveSession();
 				res.redirect(url);
 			} catch (err) {
 				console.error(err);
@@ -76,6 +78,7 @@ export const redirect = blueprint({
 			if (req.session.userid == null) return res.error(401, "Log In First!");
 			try {
 				const url = await youtubeAdd.getAuthUrl("select_account", req.session);
+				res.saveSession();
 				res.redirect(url);
 			} catch (err) {
 				console.error(err);

@@ -50,6 +50,7 @@ export const auth = blueprint({
 					try {
 						const userid = await database.createAccountWith("discord_id", id);
 						req.session.userid = userid;
+						res.saveSession();
 						res.redirect("/id/" + userid);
 					} catch (err) {
 						console.error(err);

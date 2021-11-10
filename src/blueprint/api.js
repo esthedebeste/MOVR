@@ -22,7 +22,7 @@ export const api = blueprint({
 				if (isNaN(sid) || sid !== id)
 					return res.error(403, "This isn't your account");
 				await database.deleteUser(sid);
-				req.session.destroySession();
+				res.deleteSession();
 				res.type("txt").send(`Deleted user with id ${id}.`);
 			},
 		},

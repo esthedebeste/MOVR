@@ -45,6 +45,7 @@ function twitterRedirect(method, oauth) {
 				await getOAuthRequestToken(oauth);
 			req.session.twitterOauthRequestToken = oauthRequestToken;
 			req.session.twitterOauthRequestTokenSecret = oauthRequestTokenSecret;
+			res.saveSession();
 
 			res.redirect(
 				`https://api.twitter.com/oauth/${method}?oauth_token=${oauthRequestToken}`
@@ -148,6 +149,7 @@ export const auth = blueprint({
 				user.user_id
 			);
 			req.session.userid = userid;
+			res.saveSession();
 			res.redirect("/twitter/" + user.screen_name);
 		},
 	},
@@ -157,6 +159,7 @@ export const auth = blueprint({
 			const user = await twitterCallback(req, res, addOauth);
 			delete req.session.twitterOauthRequestToken;
 			delete req.session.twitterOauthRequestTokenSecret;
+			res.saveSession();
 			await database.addToAccount(
 				"twitter_id",
 				req.session.userid,

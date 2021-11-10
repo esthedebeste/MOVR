@@ -14,6 +14,7 @@ export const auth = blueprint({
 					try {
 						const userid = await database.createAccountWith("github_id", id);
 						req.session.userid = userid;
+						res.saveSession();
 						res.redirect("/id/" + userid);
 					} catch (err) {
 						console.error(err);
@@ -62,19 +63,18 @@ export const auth = blueprint({
  * @returns {Promise<string>} GitHub Access token
  */
 async function loginToGithub(code) {
-	const result = await fetch("https://github.com/login/oauth/access_token", {
-		method: "POST",
-		headers: {
-			Accept: "application/json",
-			"User-Agent": "MOVR",
-		},
-		body: JSON.stringify({
-			client_id: ghcreds.id,
-			client_secret: ghcreds.secret,
-			code,
-		}),
-	});
-	return result.json();
+	const result = await fetch(
+		`https://github.com/login/oauth/access_token?code=${code}&client_id=${ghcreds.id}&client_secret=${ghcreds.secret}`,
+		{
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+				"User-Agent": "MOVR",
+			},
+		}
+	);
+	const json = await result.json();
+	return json;
 }
 
 /**
@@ -90,6 +90,7 @@ async function getGithubUserId(token) {
 		},
 	});
 	const data = await result.json();
+	if (data.id == null) throw data;
 	return data.id;
 }
 

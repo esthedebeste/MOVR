@@ -26,7 +26,10 @@ async function getBearerKey() {
 	if (bearerKeyCache == null || bearerKeyCache.timestamp < Date.now() + 5000) {
 		const result = await fetch(
 			`https://id.twitch.tv/oauth2/token?client_id=${twitchcreds.id}&client_secret=${twitchcreds.secret}&grant_type=client_credentials`,
-			{ headers: { "User-Agent": "MOVR" } }
+			{
+				method: "POST",
+				headers: { "User-Agent": "MOVR" },
+			}
 		);
 		const { access_token, expires_in } = await result.json();
 
@@ -45,6 +48,7 @@ export const auth = blueprint({
 				try {
 					const userid = await database.createAccountWith("twitch_id", sub);
 					req.session.userid = userid;
+					res.saveSession();
 					res.redirect("/id/" + userid);
 				} catch (err) {
 					console.error(err);
@@ -80,7 +84,9 @@ export const redirect = blueprint({
 	login: {
 		async $get(req, res) {
 			try {
-				res.redirect(await twitchLogin.getAuthUrl(true, {}, req.session));
+				const url = await twitchLogin.getAuthUrl(true, {}, req.session);
+				res.saveSession();
+				res.redirect(url);
 			} catch (err) {
 				console.error(err);
 				res.error(500, "Twitch Error.");
@@ -91,7 +97,9 @@ export const redirect = blueprint({
 		async $get(req, res) {
 			if (req.session.userid == null) return res.error(401, "Log In First!");
 			try {
-				res.redirect(await twitchAdd.getAuthUrl(true, {}, req.session));
+				const url = await twitchAdd.getAuthUrl(true, {}, req.session);
+				res.saveSession();
+				res.redirect(url);
 			} catch (err) {
 				console.error(err);
 				res.error(500, "Twitch Error.");

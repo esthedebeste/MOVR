@@ -28,7 +28,7 @@ export default class Db2 {
 			creds.hostname
 		};UID=${creds.username};PWD=${creds.password};PORT=${
 			creds.port + 1
-		};PROTOCOL=TCPIP;Security=SSL;`;
+		};PROTOCOL=TCPIP;Security=SSL;CHARSET=UTF8`;
 		console.log(`Connecting to database with hostname ${creds.hostname}...`);
 		this.db = openSync(connString);
 		console.log("Connected!");

@@ -18,7 +18,7 @@ export const root = blueprint({
 	},
 	myid: {
 		$get(req, res) {
-			res.end(req.session.userid);
+			res.send(req.session.userid);
 		},
 	},
 	auth,

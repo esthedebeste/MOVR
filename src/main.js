@@ -1,7 +1,7 @@
-import { logger } from "@tinyhttp/logger";
 import Coggers, { express, renderEngine } from "coggers";
+import coggersSession from "coggers-session";
 import ejs from "ejs";
-import { ironSession } from "next-iron-session";
+import { STATUS_CODES } from "node:http";
 import sirv from "sirv";
 import sessionpasswords from "../config/sessionpasswords.json";
 import { root } from "./blueprint/root.js";
@@ -13,63 +13,61 @@ const coggers = new Coggers(
 				sirv("public", {
 					etag: true,
 					dev: devenv,
-				}),
-				ironSession({
-					cookieName: "movr-sid",
-					password: sessionpasswords,
-					cookieOptions: {
-						httpOnly: true,
-						sameSite: "lax",
-						secure: !devenv,
-					},
-				}),
-				logger({
-					emoji: devenv,
-					methods: ["GET", "POST"],
-					output: {
-						callback: console.log,
-						color: devenv,
-					},
 				})
 			),
+			coggersSession({
+				password: sessionpasswords,
+				name: "movr-session",
+				cookie: {
+					httpOnly: true,
+					sameSite: "Lax",
+					secure: !devenv,
+					maxAge: 604800,
+					path: "/",
+				},
+			}),
 			renderEngine(ejs.renderFile, new URL("../views", import.meta.url), "ejs"),
-			// Middleware that makes ironSession behave similarly to express-session
-			(req, res) => {
-				let modified = false;
-				const orig = req.session;
-				req.session = new Proxy(req.session, {
-					get(target, prop) {
-						if (prop === "destroySession") return orig.destroy.bind(orig);
-						return target.get(prop);
-					},
-					set(target, prop, value) {
-						target.set(prop, value);
-						return (modified = true);
-					},
-					deleteProperty(target, prop) {
-						target.unset(prop);
-						return (modified = true);
-					},
-					has(target, prop) {
-						return target.get(prop) !== undefined;
-					},
-				});
-				const _end = res.end.bind(res);
-				res.end = (...args) => {
-					if (modified)
-						orig
-							.save()
-							.catch(console.error)
-							.finally(() => _end(...args));
-					else _end(...args);
-				};
-			},
 			(req, res) => {
 				res.error = (code = 500, errtext = "Internal Error.") =>
-					res.status(code).render("error", {
-						error: errtext,
-					});
+					res.status(code).render("error", { error: errtext });
 			},
+			devenv
+				? // devenv logger, colors
+				  (req, res) => {
+						const colors = {
+							2: "\x1b[36m",
+							3: "\x1b[32m",
+							4: "\x1b[31m",
+							5: "\x1b[35m",
+						};
+						res.on("finish", () => {
+							const type = res.statusCode.toString()[0];
+							const color = colors[type];
+							console.log(
+								[
+									`${req.method}`,
+									`\x1b[1m${color}${res.statusCode}`,
+									`\x1b[0m${color}` + res.statusMessage ||
+										STATUS_CODES[res.statusCode],
+									`\x1b[0m${req.url}`,
+									type === 3 ? ` => ${res.headers.Location}` : "",
+								].join(" ")
+							);
+						});
+				  }
+				: // non-devenv logger, no colors
+				  (req, res) =>
+						res.on("finish", () =>
+							console.log(
+								req.method + " " + res.statusCode + " " + res.statusMessage ||
+									STATUS_CODES[res.statusCode] +
+										" " +
+										req.url +
+										(res.statusCode.toString()[0] === 3
+											? ` => ${res.headers.Location}`
+											: "")
+							)
+						),
 		],
 		...root,
 	},
